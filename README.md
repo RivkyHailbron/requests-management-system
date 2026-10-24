@@ -30,7 +30,12 @@
    - [סכמה](#סכמה)
    - [אינדקסים](#אינדקסים)
    - [נתוני בדיקה (Seed)](#נתוני-בדיקה-seed)
-7. [הרצה מקומית](#הרצה-מקומית)
+7. [API לשליפת נתונים](#api-לשליפת-נתונים)
+   - [מניעת טעינת כלל הנתונים לזיכרון](#מניעת-טעינת-כלל-הנתונים-לזיכרון)
+   - [תמיכת האינדקסים בתרחישי החיפוש והסינון](#תמיכת-האינדקסים-בתרחישי-החיפוש-והסינון)
+   - [Validation, שגיאות ו-Logging](#validation-שגיאות-ו-logging)
+8. [בדיקות אוטומטיות](#בדיקות-אוטומטיות)
+9. [הרצה מקומית](#הרצה-מקומית)
 
 ---
 
@@ -43,7 +48,7 @@
 | 0 | תכנון, אפיון וחלוקה למשימות | הושלם |
 | 1 | תשתית Solution וקונבנציות | הושלם |
 | 2 | מודל נתונים, אינדקסים ו-Seed של 100K רשומות | הושלם |
-| 3 | API לשליפת נתונים ו-Aggregations | מתוכנן |
+| 3 | API לשליפת נתונים ו-Aggregations | הושלם |
 | 4 | עדכון סטטוס, Concurrency והיסטוריית שינויים | מתוכנן |
 | 5 | עדכון מרובה (Bulk) | מתוכנן |
 | 6 | Cache | מתוכנן |
@@ -470,6 +475,87 @@ flowchart LR
 
 ---
 
+## API לשליפת נתונים
+
+| Endpoint | תיאור |
+|---|---|
+| `GET /api/requests` | דפדוף, סינון משולב, חיפוש ומיון. מחזיר `PagedResult<RequestDto>`, שכולל `items`, `page`, `pageSize`, `totalCount` ו-`totalPages` |
+| `GET /api/requests/{id}` | פנייה בודדת, או `404` אם היא לא קיימת |
+| `GET /api/requests/summary` | שני Aggregations: התפלגות לפי סטטוס והתפלגות לפי עדיפות, וסך הכול |
+
+**דוגמה:**
+
+```
+GET /api/requests?status=InProgress&status=Waiting&priority=High&search=permit&sortBy=Title&sortDirection=Asc&page=1&pageSize=20
+```
+
+**החלטות בחוזה:**
+- **DTOs בלבד:** ה-API מחזיר `RequestDto` ולא את ישות ה-DB. ה-`RowVersion` נחשף כמחרוזת Base64 בשם `version`, והלקוח מחזיר אותו בבקשות עדכון.
+- **Enums כמחרוזות:** ‏`"InProgress"` ולא `2`. החוזה קריא ולא תלוי בערכים המספריים שנשמרים ב-DB.
+- **זמנים ב-UTC:** כל ערכי `DateTime` נשמרים ומוחזרים ב-UTC, עם סיומת `Z`. ההמרה מוגדרת פעם אחת ב-EF (`UtcDateTimeConverter`).
+- **סינון מרובה ערכים:** `status` ו-`priority` מקבלים כמה ערכים, כי "כל הפניות הפתוחות" (`New`, `InProgress` ו-`Waiting`) הוא תרחיש שכיח.
+- **התאמה מדויקת לארגון ולמטפל:** ‏`organizationName` ו-`assignedTo` הם סינון מדויק, שנתמך באינדקס. חיפוש חופשי בשם הארגון נעשה דרך `search`.
+- **מיון יציב:** לכל מיון מתווסף `Id` כמפתח משני, כך שרשומות עם ערך זהה לא "קופצות" בין עמודים.
+- **CancellationToken:** מועבר מה-Controller ועד שאילתות ה-EF. אם הלקוח מתנתק, למשל כשהחיפוש משתנה מהר והבקשה הקודמת מבוטלת, השאילתה ב-DB מבוטלת גם היא.
+
+### מניעת טעינת כלל הנתונים לזיכרון
+
+- **הכול מתבצע ב-DB:** השאילתה נבנית כ-`IQueryable` בתוך `RequestQueryExtensions`, וכל הסינון, החיפוש, המיון והדפדוף (`ApplyFilters`, `ApplySorting`, `Skip` ו-`Take`) מתורגמים ל-SQL אחד. לזיכרון נטענות רק השורות של העמוד המבוקש, לכל היותר `MaxPageSize`.
+- **Projection ל-DTO:** ‏`ProjectToDto` מבוצע בתוך השאילתה. ה-SQL בוחר רק את העמודות הנדרשות, ולא נוצרות ישויות מנוהלות. השאילתות רצות עם `AsNoTracking`, בלי עלות Change Tracker.
+- **ספירה נפרדת:** ‏`totalCount` מחושב ב-`COUNT` נפרד על אותם פילטרים, בלי להעביר רשומות.
+- **Aggregations ב-DB:** הסיכומים מחושבים ב-`GROUP BY` ב-DB, ולשרת חוזרות שורה לכל סטטוס ושורה לכל עדיפות. סטטוסים שאין להם פניות מושלמים ל-0 בשרת, כדי שהחוזה יהיה קבוע.
+- **הגבלת גודל עמוד:** `pageSize` מוגבל ל-`MaxPageSize` שמוגדר בקונפיגורציה (ברירת מחדל 100). ערך גבוה יותר נדחה עם 400.
+
+### תמיכת האינדקסים בתרחישי החיפוש והסינון
+
+| תרחיש | אינדקס | אופן השימוש |
+|---|---|---|
+| רשימת ברירת מחדל: הכי חדשות קודם | `IX_Requests_CreatedAt` | סריקה לפי סדר האינדקס ועצירה אחרי `pageSize` שורות (TOP), בלי Sort |
+| סינון לפי סטטוס, ממוין לפי תאריך | `IX_Requests_Status_CreatedAt` | Seek לסטטוס, והשורות כבר ממוינות לפי `CreatedAt DESC` |
+| סינון לפי עדיפות | `IX_Requests_Priority_CreatedAt` | Seek לעדיפות, וממוין לפי תאריך |
+| סינון לפי מטפל ("הפניות שלי") | `IX_Requests_AssignedTo_CreatedAt` | Seek לערך מדויק |
+| סינון לפי ארגון | `IX_Requests_OrganizationName_CreatedAt` | Seek לערך מדויק |
+| טווח תאריכים | `IX_Requests_CreatedAt` | Range Seek |
+| התפלגות לפי סטטוס או עדיפות | `IX_Requests_Status_CreatedAt`, `IX_Requests_Priority_CreatedAt` | ‏`GROUP BY` על אינדקס צר במקום על הטבלה המלאה |
+| חיפוש טקסטואלי (`search`) | אין אינדקס מתאים | ‏`LIKE '%term%'` לא יכול לבצע Seek. מתבצעת סריקה, בדרך כלל יחד עם פילטר נוסף שמצמצם אותה. זהו ה-Bottleneck הצפוי, והוא יימדד וינותח בשלב הביצועים יחד עם הצעה לשיפור (Full-Text Search) |
+
+### Validation, שגיאות ו-Logging
+
+- **Validation:** ‏`RequestQueryParametersValidator` (FluentValidation) בודק שמספר העמוד חיובי, שגודל העמוד בטווח, שאורך מחרוזות הסינון והחיפוש לא חורג מהמגבלה, שטווח התאריכים תקין (`createdTo` לא לפני `createdFrom`) ושה-enums תקינים. ה-Validator מופעל אוטומטית לכל פעולה על ידי `FluentValidationFilter`, כך שה-Controllers לא מכילים קוד Validation. הודעות השגיאה מוחזרות תמיד באנגלית, ולא לפי שפת השרת.
+- **ערך enum לא קיים**, למשל `status=Bogus`, נדחה כבר בשלב ה-Model Binding עם 400.
+- **פורמט שגיאה אחיד:** כל השגיאות מוחזרות כ-ProblemDetails לפי RFC 9457, כולל `traceId` לאיתור בלוגים. ‏`UseStatusCodePages` מבטיח גוף ProblemDetails גם ל-404.
+- **`GlobalExceptionHandler` (`IExceptionHandler`):**
+  - חריגה לא צפויה נרשמת בלוג כ-Error ומוחזרת כ-500 עם הודעה כללית, בלי Stack Trace ובלי פרטים פנימיים.
+  - ביטול בקשה על ידי הלקוח לא נחשב שגיאה: הוא נרשם כ-Information ומוחזר כ-499.
+- **Logging:** הלוגים נכתבים באמצעות `LoggerMessage` Source Generators, שמונעים הקצאות זיכרון ונותנים לוגים מובנים. נרשמים רק Method ו-Path, בלי Query String ובלי גוף הבקשה, כדי לא לחשוף מידע רגיש.
+- **קונפיגורציה:** ‏`DefaultPageSize`, `MaxPageSize` ו-`MaxSearchLength` מוגדרים תחת `Pagination` ב-`appsettings.json`, ונבדקים בעליית השרת (`ValidateOnStart`).
+
+---
+
+## בדיקות אוטומטיות
+
+| פרויקט | סוג | מה נבדק |
+|---|---|---|
+| `RequestsManagement.UnitTests` | Unit | מעברי סטטוס, התנהגות הישות `Request`, ו-Validation של פרמטרי השליפה |
+| `RequestsManagement.IntegrationTests` | Integration | ה-API מקצה לקצה, דרך `WebApplicationFactory`, מול SQL Server אמיתי שמורם ב-Testcontainers ומוחלים עליו ה-Migrations |
+
+**תרחישי האינטגרציה בשלב זה:**
+
+| בדיקה | תרחיש |
+|---|---|
+| `GetRequests_WithCombinedFilters_ReturnsOnlyMatchingRequestsInRequestedOrder` | סינון משולב (ארגון, שני סטטוסים ומטפל) עם מיון לפי עדיפות בסדר יורד |
+| `GetRequests_WithSearch_MatchesTitleAndOrganizationName` | חיפוש שמוצא התאמה גם בכותרת וגם בשם הארגון |
+| `GetRequests_WithPaging_ReturnsRequestedPageAndTotals` | עמוד אחרון חלקי, ו-`totalCount` ו-`totalPages` נכונים |
+| `GetRequests_WithInvalidParameters_ReturnsValidationProblem` | ‏400 עם שגיאה לכל פרמטר לא תקין |
+| `GetRequest_WhenRequestDoesNotExist_ReturnsNotFound` | ‏404 לפנייה שאינה קיימת |
+| `GetSummary_ReturnsCountsForEveryStatusAndPriority` | ה-Aggregations מכילים את כל הערכים והסכומים עקביים |
+
+**החלטות:**
+- **SQL Server אמיתי ולא InMemory Provider:** ‏InMemory לא מתרגם LIKE, לא תומך ב-`rowversion` ולא מתנהג כמו SQL Server בטרנזקציות. בדיקה של Concurrency מולו לא הייתה מוכיחה דבר.
+- **בידוד:** כל בדיקה יוצרת את הנתונים שלה עם שם ארגון ייחודי. כך הבדיקות לא תלויות זו בזו ולא בסדר ההרצה, והן חולקות קונטיינר אחד כדי לחסוך זמן.
+
+---
+
 ## הרצה מקומית
 
 ### דרישות מקדימות
@@ -514,6 +600,18 @@ dotnet build RequestsManagement.slnx
 dotnet test --solution RequestsManagement.slnx
 ```
 
+### הרצת ה-API
+
+```bash
+dotnet run --project src/RequestsManagement.Api --launch-profile http
+```
+
+ה-API עולה בכתובת `http://localhost:5175`. בסביבת Development זמינים:
+- מסמך OpenAPI: `http://localhost:5175/openapi/v1.json`
+- ממשק Scalar לבדיקה ידנית של ה-Endpoints: `http://localhost:5175/scalar`
+
+בדיקות האינטגרציה מרימות SQL Server משלהן באמצעות Testcontainers, ולכן Docker צריך לרוץ בזמן הבדיקות.
+
 ### Migrations
 
 ```bash
@@ -521,4 +619,4 @@ dotnet tool restore
 dotnet ef migrations add <MigrationName> --project src/RequestsManagement.Infrastructure --startup-project src/RequestsManagement.Api --output-dir Persistence/Migrations
 ```
 
-הוראות להרצת ה-API וצד הלקוח יתווספו בשלבים הבאים.
+הוראות להרצת צד הלקוח יתווספו בשלב 7.
