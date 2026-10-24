@@ -23,6 +23,10 @@
    - [סיכום הערכת מאמץ](#סיכום-הערכת-מאמץ)
    - [מיפוי דרישות המבדק למשימות](#מיפוי-דרישות-המבדק-למשימות)
 4. [החלטות טכנולוגיות ראשוניות](#החלטות-טכנולוגיות-ראשוניות)
+5. [מבנה הפתרון](#מבנה-הפתרון)
+   - [שכבות וכיווני תלות](#שכבות-וכיווני-תלות)
+   - [קונבנציות ואיכות קוד](#קונבנציות-ואיכות-קוד)
+6. [הרצה מקומית](#הרצה-מקומית)
 
 ---
 
@@ -33,7 +37,7 @@
 | שלב | תוכן | סטטוס |
 |---|---|---|
 | 0 | תכנון, אפיון וחלוקה למשימות | הושלם |
-| 1 | תשתית Solution וקונבנציות | מתוכנן |
+| 1 | תשתית Solution וקונבנציות | הושלם |
 | 2 | מודל נתונים, אינדקסים ו-Seed של 100K רשומות | מתוכנן |
 | 3 | API לשליפת נתונים ו-Aggregations | מתוכנן |
 | 4 | עדכון סטטוס, Concurrency והיסטוריית שינויים | מתוכנן |
@@ -356,3 +360,84 @@ F8 (ביצועים) יכול להתבצע במקביל ל-F4 עד F7, כי הו�
 | הרצה | Docker Compose | הרצה מלאה של המערכת בפקודה אחת |
 
 פירוט החלטות נוספות והחלופות שנשקלו יתווסף בשלבים הבאים, יחד עם המימוש.
+
+---
+
+## מבנה הפתרון
+
+```
+requests-management-system/
+├── src/
+│   ├── RequestsManagement.Domain/          ישויות, enums וכללים עסקיים
+│   ├── RequestsManagement.Application/     Use cases, DTOs, Validation וממשקים
+│   ├── RequestsManagement.Infrastructure/  EF Core, SQL Server, Cache ומימושי הממשקים
+│   └── RequestsManagement.Api/             Controllers, טיפול בשגיאות ותצורה
+├── tools/
+│   └── RequestsManagement.Seeder/          יצירה חוזרת של נתוני בדיקה
+├── tests/
+│   ├── RequestsManagement.UnitTests/       בדיקות לוגיקה עסקית ו-Validation
+│   └── RequestsManagement.IntegrationTests/ בדיקות API מול SQL Server אמיתי
+├── Directory.Build.props                   הגדרות Build משותפות לכל הפרויקטים
+├── Directory.Packages.props                ניהול מרוכז של גרסאות חבילות
+├── global.json                             נעילת גרסת ה-SDK
+├── .editorconfig                           קונבנציות קוד
+└── docker-compose.yml                      סביבת הרצה מקומית
+```
+
+### שכבות וכיווני תלות
+
+```mermaid
+flowchart LR
+    Api --> Application
+    Api --> Infrastructure
+    Infrastructure --> Application
+    Application --> Domain
+    Seeder --> Infrastructure
+```
+
+| שכבה | אחריות | מה אסור בה |
+|---|---|---|
+| Domain | מודל הפנייה, מעברי סטטוס וכללים עסקיים טהורים | תלות בתשתית, ב-EF Core או ב-ASP.NET |
+| Application | תרחישי השימוש, חוזי DTO, Validation וממשקים לתשתית | גישה ישירה ל-DB או ל-HTTP |
+| Infrastructure | מימוש הגישה לנתונים, Cache ושירותים חיצוניים | לוגיקה עסקית |
+| Api | חשיפת HTTP, מיפוי שגיאות לקודי תשובה, תצורה ו-DI | לוגיקה עסקית או שאילתות |
+
+התלויות מצביעות פנימה, אל ה-Domain. כך הלוגיקה העסקית נבדקת בבדיקות יחידה בלי בסיס נתונים, ואפשר להחליף את מימוש התשתית בלי לגעת בה.
+
+### קונבנציות ואיכות קוד
+
+- **`Directory.Build.props`:** ‏`net10.0`, ‏Nullable Reference Types ו-`TreatWarningsAsErrors`. ‏Roslyn Analyzers מופעלים ברמת `latest-recommended`, וכללי הסגנון נאכפים כבר בזמן Build (`EnforceCodeStyleInBuild`).
+- **`Directory.Packages.props`:** כל גרסאות החבילות מנוהלות במקום אחד (Central Package Management). כך לא ייתכנו שתי גרסאות שונות של אותה חבילה בפרויקטים שונים.
+- **`.editorconfig`:** כללי שמות (`_camelCase` לשדות פרטיים, סיומת `Async` למתודות אסינכרוניות, קידומת `I` לממשקים), ‏File-scoped namespaces, סוגריים מסולסלים חובה ופורמט אחיד לקבצי C# ו-TypeScript.
+- **`global.json`:** הפרויקט נבנה עם ‎.NET SDK 10. גרסאות Feature חדשות יותר מתקבלות אוטומטית.
+- **קונפיגורציה:** ערכים משתנים כמו סיסמאות ופורטים מגיעים מקובץ `.env` שאינו נשמר ב-Git. הקובץ `.env.example` מתעד את המשתנים הנדרשים.
+- **קומיטים:** לפי [Conventional Commits](https://www.conventionalcommits.org/), קומיט אחד לכל שלב בתוכנית העבודה.
+
+---
+
+## הרצה מקומית
+
+### דרישות מקדימות
+
+| כלי | גרסה |
+|---|---|
+| .NET SDK | 10.0 |
+| Docker Desktop | 4.x ומעלה |
+| Node.js | 22 LTS ומעלה (לצד הלקוח, משלב 7) |
+
+### הקמת בסיס הנתונים
+
+```bash
+cp .env.example .env
+docker compose up -d sqlserver
+```
+
+הפקודה מרימה SQL Server 2022 בפורט שמוגדר ב-`.env` (ברירת המחדל: `1433`). הנתונים נשמרים ב-Volume, כך שהם לא נמחקים כשהקונטיינר מופעל מחדש.
+
+### בנייה
+
+```bash
+dotnet build RequestsManagement.slnx
+```
+
+הוראות להרצת ה-API, ה-Seed, הבדיקות וצד הלקוח יתווספו בשלבים הבאים.

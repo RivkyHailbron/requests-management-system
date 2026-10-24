@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\RequestsManagement.Domain\RequestsManagement.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

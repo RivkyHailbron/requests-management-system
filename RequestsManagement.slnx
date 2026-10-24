@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/RequestsManagement.Api/RequestsManagement.Api.csproj" />
+    <Project Path="src/RequestsManagement.Application/RequestsManagement.Application.csproj" />
+    <Project Path="src/RequestsManagement.Domain/RequestsManagement.Domain.csproj" />
+    <Project Path="src/RequestsManagement.Infrastructure/RequestsManagement.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/RequestsManagement.IntegrationTests/RequestsManagement.IntegrationTests.csproj" />
+    <Project Path="tests/RequestsManagement.UnitTests/RequestsManagement.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/RequestsManagement.Seeder/RequestsManagement.Seeder.csproj" />
+  </Folder>
+</Solution>
