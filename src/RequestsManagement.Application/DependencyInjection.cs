@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using RequestsManagement.Application.Common;
 using RequestsManagement.Application.Requests;
+using RequestsManagement.Application.Requests.Commands;
 
 namespace RequestsManagement.Application;
 
@@ -14,6 +15,12 @@ public static class DependencyInjection
         services
             .AddOptions<PaginationOptions>()
             .BindConfiguration(PaginationOptions.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services
+            .AddOptions<BulkUpdateOptions>()
+            .BindConfiguration(BulkUpdateOptions.SectionName)
             .ValidateDataAnnotations()
             .ValidateOnStart();
 

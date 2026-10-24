@@ -87,6 +87,16 @@ public sealed class RequestsController(
         };
     }
 
+    [HttpPatch("status")]
+    [Consumes("application/json")]
+    [ProducesResponseType<BulkStatusUpdateResultDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<BulkStatusUpdateResultDto>> BulkUpdateStatusAsync(
+        BulkUpdateRequestStatusRequest command,
+        [FromHeader(Name = ApiHeaders.UserId), Required, StringLength(RequestConstraints.UserIdentifierMaxLength)] string userId,
+        CancellationToken cancellationToken) =>
+        Ok(await statusService.BulkUpdateStatusAsync(command, userId.Trim(), cancellationToken));
+
     private ObjectResult ProblemWithExtensions(
         int statusCode,
         string title,

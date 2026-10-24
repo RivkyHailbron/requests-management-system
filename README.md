@@ -37,6 +37,7 @@
 8. [עדכון סטטוס, Concurrency והיסטוריה](#עדכון-סטטוס-concurrency-והיסטוריה)
    - [מניעת Lost Update](#מניעת-lost-update)
    - [היסטוריית שינויים (Audit)](#היסטוריית-שינויים-audit)
+   - [עדכון מרובה (Bulk)](#עדכון-מרובה-bulk)
 9. [בדיקות אוטומטיות](#בדיקות-אוטומטיות)
 10. [הרצה מקומית](#הרצה-מקומית)
 
@@ -53,7 +54,7 @@
 | 2 | מודל נתונים, אינדקסים ו-Seed של 100K רשומות | הושלם |
 | 3 | API לשליפת נתונים ו-Aggregations | הושלם |
 | 4 | עדכון סטטוס, Concurrency והיסטוריית שינויים | הושלם |
-| 5 | עדכון מרובה (Bulk) | מתוכנן |
+| 5 | עדכון מרובה (Bulk) | הושלם |
 | 6 | Cache | מתוכנן |
 | 7 | צד לקוח (Angular) | מתוכנן |
 | 8 | מדידת ביצועים | מתוכנן |
@@ -580,6 +581,54 @@ GET /api/requests?status=InProgress&status=Waiting&priority=High&search=permit&s
 - כל רשומה כוללת `RequestId`, `PreviousStatus`, `NewStatus`, `ChangedAt` ו-`ChangedBy`.
 - השליפה נתמכת באינדקס `IX_RequestStatusHistory_RequestId_ChangedAt`, שמחזיר את ההיסטוריה של פנייה ממוינת בלי Sort.
 
+### עדכון מרובה (Bulk)
+
+`PATCH /api/requests/status` מעדכן כמה פניות לאותו סטטוס בבקשה אחת. ‏Header חובה: ‏`X-User-Id`.
+
+```json
+{
+  "status": "InProgress",
+  "items": [
+    { "id": 17, "version": "AAAAAAABOHw=" },
+    { "id": 42, "version": "AAAAAAAAaq0=" }
+  ]
+}
+```
+
+**Validation (מחזיר 400 לכל הבקשה):** רשימה ריקה, יותר מ-`MaxItems` פריטים (100, מוגדר ב-`BulkUpdate:MaxItems`), אותה פנייה פעמיים, `version` לא תקין או סטטוס לא קיים.
+
+**ההחלטה: Partial Success.**
+כל פנייה מעובדת בנפרד, והעדכון שלה יחד עם רשומת ה-Audit נשמרים בטרנזקציה משלה. פנייה שנכשלה לא מבטלת את האחרות.
+
+הנימוק:
+- **העדכונים בלתי תלויים זה בזה.** אין כלל עסקי שמחייב שכל הפניות יעברו יחד.
+- **All-or-Nothing לא מתאים לעבודה מקבילית.** ב-100 פניות שמשתמשים אחרים עובדים עליהן באותו זמן, הסיכוי שאחת מהן תשתנה בדרך גבוה. ב-All-or-Nothing ‏Conflict בודד היה מבטל את כל הפעולה, והמשתמש היה נאלץ לנסות שוב ושוב.
+- **ההתנהגות שקופה.** הלקוח מקבל תוצאה מפורשת לכל פנייה, ויכול לרענן ולנסות שוב רק את אלה שנכשלו.
+
+**התשובה:** תמיד `200` כשהבקשה עצמה תקינה, גם אם חלק מהפניות או כולן נכשלו. הכישלון הוא של פריטים בודדים ולא של הבקשה, והפירוט נמצא בגוף התשובה:
+
+```json
+{
+  "requestedCount": 4,
+  "updatedCount": 1,
+  "failedCount": 3,
+  "items": [
+    { "id": 17, "outcome": "Updated", "request": { "...": "המצב החדש כולל version חדש" } },
+    { "id": 42, "outcome": "Conflict", "request": { "...": "המצב העדכני ב-DB" } },
+    { "id": 58, "outcome": "InvalidTransition", "request": { "...": "המצב הנוכחי" } },
+    { "id": 99, "outcome": "NotFound", "request": null }
+  ]
+}
+```
+
+לא בחרתי ב-`207 Multi-Status` כי הוא קוד של WebDAV, ולקוחות HTTP רגילים לא מטפלים בו באופן מיוחד. ‏`200` עם סיכום מפורש פשוט יותר לצריכה.
+
+**מימוש:**
+- **טעינה אחת:** כל הפניות נטענות בשאילתה אחת (`WHERE Id IN (...)`), ולא שאילתה לכל פנייה.
+- **אותו מסלול כמו עדכון בודד:** כל פריט עובר את אותה מתודה (`ApplyStatusChangeAsync`), כך שהכללים זהים לחלוטין: קיום, גרסה, מעבר, ואכיפה אטומית ב-DB.
+- **בידוד כישלונות:** אם פריט נכשל ב-Conflict בשלב השמירה, רק השינויים הממתינים שלו מנותקים מה-Change Tracker. פניות שכבר נשמרו לא מושפעות.
+- **מחיר ידוע:** פעולת `SaveChanges` לכל פריט, כלומר עד 100 Round-trips. זה המחיר של אטומיות לכל פריט, והוא סביר עבור 100 פריטים לכל היותר.
+
 ---
 
 ## בדיקות אוטומטיות
@@ -605,6 +654,8 @@ GET /api/requests?status=InProgress&status=Waiting&priority=High&search=permit&s
 | `UpdateStatus_WithDisallowedTransition_ReturnsUnprocessableEntity` | מעבר אסור מקבל 422, בלי שינוי ובלי היסטוריה |
 | `UpdateStatus_WhenRequestDoesNotExist_ReturnsNotFound` | ‏404 בעדכון פנייה שאינה קיימת |
 | `UpdateStatus_WithInvalidInput_ReturnsValidationProblem` | ‏400 לסטטוס לא קיים, לגרסה לא תקינה ולבקשה בלי `X-User-Id` |
+| `BulkUpdate_WithMixedItems_UpdatesValidItemsAndReportsEachFailure` | ‏Bulk עם פנייה תקינה, גרסה ישנה, מעבר אסור ופנייה שלא קיימת: רק התקינה מתעדכנת ומקבלת היסטוריה, ולכל אחת מהאחרות מוחזרת סיבת הכישלון המדויקת |
+| `BulkUpdate_WithTooManyOrDuplicateItems_ReturnsValidationProblem` | ‏400 ל-101 פריטים, לפנייה כפולה ולרשימה ריקה |
 
 **החלטות:**
 - **SQL Server אמיתי ולא InMemory Provider:** ‏InMemory לא מתרגם LIKE, לא תומך ב-`rowversion` ולא מתנהג כמו SQL Server בטרנזקציות. בדיקה של Concurrency מולו לא הייתה מוכיחה דבר.

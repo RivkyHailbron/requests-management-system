@@ -10,6 +10,13 @@ internal sealed class RequestRepository(RequestsDbContext dbContext) : IRequestR
     public Task<Request?> GetByIdAsync(int id, CancellationToken cancellationToken) =>
         dbContext.Requests.SingleOrDefaultAsync(request => request.Id == id, cancellationToken);
 
+    public async Task<IReadOnlyDictionary<int, Request>> GetByIdsAsync(
+        IReadOnlyCollection<int> ids,
+        CancellationToken cancellationToken) =>
+        await dbContext.Requests
+            .Where(request => ids.Contains(request.Id))
+            .ToDictionaryAsync(request => request.Id, cancellationToken);
+
     public void SetExpectedVersion(Request request, byte[] expectedVersion) =>
         dbContext.Entry(request).Property(entity => entity.RowVersion).OriginalValue = expectedVersion;
 
@@ -25,8 +32,20 @@ internal sealed class RequestRepository(RequestsDbContext dbContext) : IRequestR
         }
         catch (DbUpdateConcurrencyException)
         {
-            dbContext.ChangeTracker.Clear();
+            DiscardPendingChanges();
             return false;
+        }
+    }
+
+    private void DiscardPendingChanges()
+    {
+        var pendingEntries = dbContext.ChangeTracker.Entries()
+            .Where(entry => entry.State is EntityState.Added or EntityState.Modified or EntityState.Deleted)
+            .ToList();
+
+        foreach (var entry in pendingEntries)
+        {
+            entry.State = EntityState.Detached;
         }
     }
 }
