@@ -1,0 +1,49 @@
+=== 1A. Filtered page (Status = InProgress, newest first, page 3) - with indexes ===
+   CPU time = 0 ms,  elapsed time = 0 ms.
+   CPU time = 0 ms, elapsed time = 0 ms.
+Table 'Requests'. Scan count 1, logical reads 187, physical reads 0, page server reads 0, read-ahead reads 0, page server read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob page server reads 0, lob read-ahead reads 0, lob page server read-ahead reads 0.
+   CPU time = 1 ms,  elapsed time = 1 ms.
+   CPU time = 1 ms,  elapsed time = 1 ms.
+=== 1B. Filtered page - forced clustered scan (no secondary index) ===
+   CPU time = 0 ms,  elapsed time = 0 ms.
+   CPU time = 0 ms, elapsed time = 0 ms.
+Table 'Worktable'. Scan count 0, logical reads 0, physical reads 0, page server reads 0, read-ahead reads 0, page server read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob page server reads 0, lob read-ahead reads 0, lob page server read-ahead reads 0.
+Table 'Requests'. Scan count 1, logical reads 2487, physical reads 0, page server reads 0, read-ahead reads 0, page server read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob page server reads 0, lob read-ahead reads 0, lob page server read-ahead reads 0.
+   CPU time = 74 ms,  elapsed time = 78 ms.
+   CPU time = 74 ms,  elapsed time = 79 ms.
+=== 2A. Filtered count (Status = InProgress) - with indexes ===
+   CPU time = 0 ms,  elapsed time = 0 ms.
+   CPU time = 0 ms, elapsed time = 0 ms.
+Table 'Requests'. Scan count 1, logical reads 75, physical reads 0, page server reads 0, read-ahead reads 0, page server read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob page server reads 0, lob read-ahead reads 0, lob page server read-ahead reads 0.
+   CPU time = 8 ms,  elapsed time = 5 ms.
+   CPU time = 8 ms,  elapsed time = 5 ms.
+=== 2B. Filtered count - forced clustered scan ===
+   CPU time = 0 ms,  elapsed time = 0 ms.
+   CPU time = 0 ms, elapsed time = 0 ms.
+Table 'Requests'. Scan count 1, logical reads 2487, physical reads 0, page server reads 0, read-ahead reads 0, page server read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob page server reads 0, lob read-ahead reads 0, lob page server read-ahead reads 0.
+   CPU time = 20 ms,  elapsed time = 23 ms.
+   CPU time = 20 ms,  elapsed time = 23 ms.
+=== 3A. Summary aggregation (GROUP BY Status) - with indexes ===
+   CPU time = 0 ms,  elapsed time = 0 ms.
+Table 'Requests'. Scan count 1, logical reads 239, physical reads 0, page server reads 0, read-ahead reads 0, page server read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob page server reads 0, lob read-ahead reads 0, lob page server read-ahead reads 0.
+   CPU time = 23 ms,  elapsed time = 22 ms.
+=== 3B. Summary aggregation - forced clustered scan ===
+   CPU time = 0 ms,  elapsed time = 0 ms.
+Table 'Worktable'. Scan count 0, logical reads 0, physical reads 0, page server reads 0, read-ahead reads 0, page server read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob page server reads 0, lob read-ahead reads 0, lob page server read-ahead reads 0.
+Table 'Workfile'. Scan count 0, logical reads 0, physical reads 0, page server reads 0, read-ahead reads 0, page server read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob page server reads 0, lob read-ahead reads 0, lob page server read-ahead reads 0.
+Table 'Requests'. Scan count 1, logical reads 2487, physical reads 0, page server reads 0, read-ahead reads 0, page server read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob page server reads 0, lob read-ahead reads 0, lob page server read-ahead reads 0.
+   CPU time = 59 ms,  elapsed time = 60 ms.
+=== 4. Text search (LIKE %term%) with Priority filter - bottleneck candidate ===
+   CPU time = 0 ms,  elapsed time = 0 ms.
+   CPU time = 0 ms, elapsed time = 0 ms.
+Table 'Requests'. Scan count 1, logical reads 435, physical reads 0, page server reads 0, read-ahead reads 0, page server read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob page server reads 0, lob read-ahead reads 0, lob page server read-ahead reads 0.
+   CPU time = 0 ms,  elapsed time = 2 ms.
+   CPU time = 0 ms,  elapsed time = 2 ms.
+=== 5. Deep page (OFFSET 50000) - bottleneck candidate ===
+   CPU time = 0 ms,  elapsed time = 0 ms.
+   CPU time = 0 ms, elapsed time = 0 ms.
+Table 'Worktable'. Scan count 0, logical reads 0, physical reads 0, page server reads 0, read-ahead reads 0, page server read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob page server reads 0, lob read-ahead reads 0, lob page server read-ahead reads 0.
+Table 'Requests'. Scan count 13, logical reads 2610, physical reads 0, page server reads 0, read-ahead reads 0, page server read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob page server reads 0, lob read-ahead reads 0, lob page server read-ahead reads 0.
+   CPU time = 734 ms,  elapsed time = 300 ms.
+   CPU time = 734 ms,  elapsed time = 300 ms.
+   CPU time = 0 ms,  elapsed time = 0 ms.

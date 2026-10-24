@@ -1,0 +1,13 @@
+  |--Top(OFFSET EXPRESSION:((40)),TOP EXPRESSION:((20)))
+       |--Nested Loops(Inner Join, OUTER REFERENCES:([r].[Id], [Expr1001]) WITH ORDERED PREFETCH)
+            |--Index Seek(OBJECT:([RequestsManagement].[dbo].[Requests].[IX_Requests_Status_CreatedAt] AS [r]), SEEK:([r].[Status]=(2)) ORDERED FORWARD)
+            |--Clustered Index Seek(OBJECT:([RequestsManagement].[dbo].[Requests].[PK_Requests] AS [r]), SEEK:([r].[Id]=[RequestsManagement].[dbo].[Requests].[Id] as [r].[Id]) LOOKUP ORDERED FORWARD)
+  |--Compute Scalar(DEFINE:([Expr1001]=CONVERT_IMPLICIT(int,[Expr1004],0)))
+       |--Stream Aggregate(GROUP BY:([r].[Status]) DEFINE:([Expr1004]=Count(*)))
+            |--Index Scan(OBJECT:([RequestsManagement].[dbo].[Requests].[IX_Requests_Status_CreatedAt] AS [r]), ORDERED FORWARD)
+  |--Sort(TOP 20, ORDER BY:([r].[CreatedAt] DESC, [r].[Id] DESC))
+       |--Clustered Index Scan(OBJECT:([RequestsManagement].[dbo].[Requests].[PK_Requests] AS [r]), WHERE:([RequestsManagement].[dbo].[Requests].[Priority] as [r].[Priority]=(3) AND ([RequestsManagement].[dbo].[Requests].[Title] as [r].[Title] like N'%xyz-not-found%' OR [RequestsManagement].[dbo].[Requests].[OrganizationName] as [r].[OrganizationName] like N'%xyz-not-found%')))
+  |--Top(OFFSET EXPRESSION:((50000)),TOP EXPRESSION:((20)))
+       |--Index Scan(OBJECT:([RequestsManagement].[dbo].[Requests].[IX_Requests_CreatedAt] AS [r]), ORDERED FORWARD)
+=== rare search term (no matches) ===
+Table 'Requests'. Scan count 1, logical reads 2487, physical reads 0, page server reads 0, read-ahead reads 0, page server read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob page server reads 0, lob read-ahead reads 0, lob page server read-ahead reads 0.

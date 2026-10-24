@@ -33,24 +33,24 @@ internal sealed class RequestConfiguration : IEntityTypeConfiguration<Request>
 
         builder.Property(request => request.RowVersion).IsRowVersion();
 
-        builder.HasIndex(request => request.CreatedAt)
-            .IsDescending()
+        builder.HasIndex(request => new { request.CreatedAt, request.Id })
+            .IsDescending(true, true)
             .HasDatabaseName("IX_Requests_CreatedAt");
 
-        builder.HasIndex(request => new { request.Status, request.CreatedAt })
-            .IsDescending(false, true)
+        builder.HasIndex(request => new { request.Status, request.CreatedAt, request.Id })
+            .IsDescending(false, true, true)
             .HasDatabaseName("IX_Requests_Status_CreatedAt");
 
-        builder.HasIndex(request => new { request.Priority, request.CreatedAt })
-            .IsDescending(false, true)
+        builder.HasIndex(request => new { request.Priority, request.CreatedAt, request.Id })
+            .IsDescending(false, true, true)
             .HasDatabaseName("IX_Requests_Priority_CreatedAt");
 
-        builder.HasIndex(request => new { request.AssignedTo, request.CreatedAt })
-            .IsDescending(false, true)
+        builder.HasIndex(request => new { request.AssignedTo, request.CreatedAt, request.Id })
+            .IsDescending(false, true, true)
             .HasDatabaseName("IX_Requests_AssignedTo_CreatedAt");
 
-        builder.HasIndex(request => new { request.OrganizationName, request.CreatedAt })
-            .IsDescending(false, true)
+        builder.HasIndex(request => new { request.OrganizationName, request.CreatedAt, request.Id })
+            .IsDescending(false, true, true)
             .HasDatabaseName("IX_Requests_OrganizationName_CreatedAt");
     }
 }

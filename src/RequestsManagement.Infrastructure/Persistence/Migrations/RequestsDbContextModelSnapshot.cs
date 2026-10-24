@@ -64,24 +64,24 @@ namespace RequestsManagement.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatedAt")
+                    b.HasIndex("CreatedAt", "Id")
                         .IsDescending()
                         .HasDatabaseName("IX_Requests_CreatedAt");
 
-                    b.HasIndex("AssignedTo", "CreatedAt")
-                        .IsDescending(false, true)
+                    b.HasIndex("AssignedTo", "CreatedAt", "Id")
+                        .IsDescending(false, true, true)
                         .HasDatabaseName("IX_Requests_AssignedTo_CreatedAt");
 
-                    b.HasIndex("OrganizationName", "CreatedAt")
-                        .IsDescending(false, true)
+                    b.HasIndex("OrganizationName", "CreatedAt", "Id")
+                        .IsDescending(false, true, true)
                         .HasDatabaseName("IX_Requests_OrganizationName_CreatedAt");
 
-                    b.HasIndex("Priority", "CreatedAt")
-                        .IsDescending(false, true)
+                    b.HasIndex("Priority", "CreatedAt", "Id")
+                        .IsDescending(false, true, true)
                         .HasDatabaseName("IX_Requests_Priority_CreatedAt");
 
-                    b.HasIndex("Status", "CreatedAt")
-                        .IsDescending(false, true)
+                    b.HasIndex("Status", "CreatedAt", "Id")
+                        .IsDescending(false, true, true)
                         .HasDatabaseName("IX_Requests_Status_CreatedAt");
 
                     b.ToTable("Requests", (string)null);

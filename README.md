@@ -40,8 +40,9 @@
    - [עדכון מרובה (Bulk)](#עדכון-מרובה-bulk)
 9. [Cache](#cache)
 10. [צד לקוח (Angular)](#צד-לקוח-angular)
-11. [בדיקות אוטומטיות](#בדיקות-אוטומטיות)
-12. [הרצה מקומית](#הרצה-מקומית)
+11. [ביצועים](#ביצועים)
+12. [בדיקות אוטומטיות](#בדיקות-אוטומטיות)
+13. [הרצה מקומית](#הרצה-מקומית)
 
 ---
 
@@ -59,7 +60,7 @@
 | 5 | עדכון מרובה (Bulk) | הושלם |
 | 6 | Cache | הושלם |
 | 7 | צד לקוח (Angular) | הושלם |
-| 8 | מדידת ביצועים | מתוכנן |
+| 8 | מדידת ביצועים | הושלם |
 | 9 | היערכות להרצה ותיעוד סופי | מתוכנן |
 
 ---
@@ -447,7 +448,7 @@ flowchart LR
 
 ### אינדקסים
 
-ברירת המחדל של המיון היא `CreatedAt DESC`, ולכן כל אינדקס סינון כולל את `CreatedAt` בסדר יורד כעמודה שנייה. כך SQL Server מסנן ומחזיר את העמוד המבוקש לפי סדר האינדקס, בלי פעולת Sort נפרדת.
+ברירת המחדל של המיון היא `CreatedAt DESC, Id DESC` (‏`Id` הוא מפתח משני שמבטיח מיון יציב). לכן כל אינדקס סינון כולל אחרי עמודת הסינון את `CreatedAt DESC` ואת `Id DESC`, בדיוק בסדר של ה-`ORDER BY`. כך SQL Server מסנן ומחזיר את העמוד המבוקש לפי סדר האינדקס, בלי פעולת Sort נפרדת. מיון עולה משתמש באותו אינדקס בסריקה לאחור. ‏`Id` נוסף לאינדקסים בעקבות המדידה בשלב הביצועים, ראו [ביצועים](#ביצועים).
 
 | אינדקס | תרחיש שהוא משרת |
 |---|---|
@@ -745,6 +746,89 @@ client/requests-management-web/src/app/
 ### תקשורת עם ה-API
 
 בפיתוח, `ng serve` משתמש ב-`proxy.conf.json`, שמעביר את כל הבקשות שמתחילות ב-`/api` ל-`http://localhost:5175`. הלקוח והשרת נראים לדפדפן כאותו Origin, ולכן אין צורך להגדיר CORS בשרת.
+
+---
+
+## ביצועים
+
+כל המדידות בוצעו על 100,000 הרשומות, עם `SET STATISTICS IO, TIME` ו-`SET SHOWPLAN_TEXT`, כשה-Cache של SQL Server חם (Warm Cache). ה-SQL זהה לזה ש-EF Core מייצר, והוא נלקח מלוג ה-API. כל שאילתה נמדדה גם עם האינדקסים וגם בכפייה של סריקת הטבלה המלאה (`WITH (INDEX(0))`) לצורך השוואה.
+
+| קובץ | תוכן |
+|---|---|
+| [`docs/performance/benchmark.sql`](docs/performance/benchmark.sql) | סקריפט המדידה, ניתן להרצה חוזרת |
+| [`docs/performance/benchmark-results.txt`](docs/performance/benchmark-results.txt) | התוצאות הגולמיות (Logical Reads ו-CPU) |
+| [`docs/performance/execution-plans.sql`](docs/performance/execution-plans.sql) | השאילתות שעבורן הופקו תוכניות הביצוע |
+| [`docs/performance/execution-plans.txt`](docs/performance/execution-plans.txt) | תוכניות הביצוע |
+
+### הפעולות שנבחנו
+
+1. **`GET /api/requests` עם סינון:** הפעולה המרכזית במערכת. סינון לפי סטטוס, ממוין מהחדש לישן, עמוד 3. נמדדות שתי שאילתות: העמוד עצמו וה-`COUNT`.
+2. **`GET /api/requests/summary`:** ה-Aggregation, ‏`GROUP BY Status` על כל הטבלה.
+
+### ממצא מרכזי ותיקון
+
+המדידה הראשונה חשפה שהשאילתה המרכזית **לא השתמשה באינדקס בכלל**. היא ביצעה סריקה מלאה של הטבלה ו-Sort, עם 2,487 Logical Reads, בדיוק כמו בלי אינדקס.
+
+**הסיבה:** המיון הוא `ORDER BY CreatedAt DESC, Id DESC`. האינדקס המקורי `(Status, CreatedAt DESC)` מכיל את `Id` רק כמפתח ה-Clustered שנוסף אוטומטית, ובסדר עולה. האינדקס לא סיפק את סדר המיון המלא, ולכן האופטימייזר העדיף סריקה ומיון.
+
+**התיקון:** הוספת `Id DESC` במפורש למפתח של כל אינדקסי הסינון (Migration ‏`AlignIndexesWithStableSortOrder`). עכשיו תוכנית הביצוע היא:
+
+```
+Top(OFFSET 40, TOP 20)
+  Nested Loops
+    Index Seek (IX_Requests_Status_CreatedAt), SEEK: Status = 2, ORDERED FORWARD
+    Clustered Index Seek (PK_Requests), LOOKUP
+```
+
+Seek ישיר לסטטוס, קריאה של 60 שורות בלבד לפי סדר האינדקס, ו-Key Lookup ל-20 השורות של העמוד. אין Sort ואין סריקה.
+
+### תוצאות
+
+| # | פעולה | בלי אינדקס (סריקה מלאה) | לפני התיקון | אחרי התיקון |
+|---|---|---|---|---|
+| 1 | עמוד מסונן לפי סטטוס | 2,487 reads · ‏~95ms | 2,487 reads · ‏66ms | **187 reads · ‏1ms** |
+| 2 | ‏`COUNT` מסונן לפי סטטוס | 2,487 reads · ‏~30ms | 204 reads · ‏4ms | **75 reads · ‏9ms** |
+| 3 | ‏`GROUP BY Status` (סיכום) | 2,487 reads · ‏~60ms | 659 reads · ‏24ms | **239 reads · ‏27ms** |
+| 4 | חיפוש `LIKE '%permit%'` עם סינון עדיפות | 2,487 reads | 2,487 reads · ‏152ms | **435 reads · ‏4ms** |
+| 5 | עמוד עמוק (`OFFSET 50000`) | - | 2,610 reads · ‏217ms | 2,610 reads · ‏342ms |
+
+**הסבר:**
+- **(1)** פי 13 פחות קריאות, ופי 60 מהר יותר.
+- **(2) ו-(3)** הספירה והקיבוץ מתבצעים על האינדקס הצר `IX_Requests_Status_CreatedAt` (‏`Stream Aggregate` על `Index Scan`) ולא על הטבלה המלאה. לכן מספר הקריאות נמוך פי 3 עד פי 30. הסיכום עדיין קורא את כל 100K השורות של האינדקס, ולכן הוא נשמר ב-Cache (ראו [Cache](#cache)).
+- **(4)** במונח נפוץ השאילתה עוברת על אינדקס התאריך לפי הסדר ועוצרת אחרי 20 התאמות.
+
+### אינדקסים שנוספו והסיבה
+
+| אינדקס | סיבה |
+|---|---|
+| `IX_Requests_Status_CreatedAt` ‏(Status, CreatedAt DESC, Id DESC) | הסינון הנפוץ ביותר. משמש גם את `COUNT` ואת ה-`GROUP BY Status` כאינדקס צר |
+| `IX_Requests_Priority_CreatedAt` ‏(Priority, CreatedAt DESC, Id DESC) | סינון לפי עדיפות וה-`GROUP BY Priority` |
+| `IX_Requests_AssignedTo_CreatedAt` ‏(AssignedTo, CreatedAt DESC, Id DESC) | "הפניות שלי": סינון לפי מטפל |
+| `IX_Requests_OrganizationName_CreatedAt` ‏(OrganizationName, CreatedAt DESC, Id DESC) | סינון לפי ארגון |
+| `IX_Requests_CreatedAt` ‏(CreatedAt DESC, Id DESC) | הרשימה בלי סינון, טווח תאריכים, ומיון בלבד |
+| `IX_RequestStatusHistory_RequestId_ChangedAt` | שליפת ההיסטוריה של פנייה |
+
+### Bottlenecks שזוהו והצעות לשיפור
+
+**1. חיפוש טקסטואלי במונח נדיר (`LIKE '%term%'`).**
+כשהמונח לא קיים או נדיר, אין התאמות שיעצרו את הסריקה מוקדם. תוכנית הביצוע היא `Clustered Index Scan` של כל הטבלה ו-`Sort`, עם 2,487 reads, כי `LIKE` עם `%` בתחילת המונח לא יכול לבצע Seek. ב-100K רשומות זה עדיין עשרות מילישניות, אבל העלות גדלה ליניארית עם כמות הנתונים.
+
+**הצעות:**
+- **Full-Text Search של SQL Server:** ‏`FULLTEXT INDEX` על `Title` ו-`OrganizationName`, והחלפת `LIKE` ב-`CONTAINS`. החיפוש עובר ל-Seek באינדקס מילים. דורש את רכיב Full-Text, שלא נכלל ב-Image הבסיסי של SQL Server ל-Linux.
+- **מנוע חיפוש ייעודי** (Elasticsearch או Azure AI Search) אם נדרש חיפוש מתקדם: Fuzzy, דירוג, הדגשה.
+- **צעד ביניים זול:** אורך מינימלי למונח חיפוש, כך שחיפוש של תו אחד לא יגרום לסריקה.
+
+**2. דפדוף עמוק (`OFFSET`).**
+ב-`OFFSET 50000` השרת עדיין קורא ומדלג על 50,000 שורות באינדקס. זה Index Scan מלא עם Parallelism, ‏2,610 reads ו-342ms. העלות גדלה ככל שמספר העמוד עולה.
+
+**הצעה: Keyset Pagination**, שנקרא גם Seek Method. במקום `OFFSET`, הלקוח שולח את ה-`(CreatedAt, Id)` של השורה האחרונה שראה, והשאילתה הופכת ל-`WHERE (CreatedAt, Id) < (@lastCreatedAt, @lastId)`. זה Seek ישיר לנקודה, ועלות זהה לכל עמוד. החיסרון: אין קפיצה ישירה לעמוד מספר N. לכן הפתרון מתאים לגלילה אינסופית או לכפתורי "הבא" ו"הקודם". בפועל משתמשים כמעט לא מגיעים לעמוד 2,500, ולכן `OFFSET` נבחר לממשק הנוכחי. ה-Keyset הוא השיפור הבא אם יידרש.
+
+**3. הנתונים המסכמים קוראים את כל האינדקס.**
+‏`GROUP BY` חייב לעבור על כל השורות. זה כבר מטופל באמצעות ה-Cache. בנפחים גדולים יותר אפשר להחזיק טבלת מונים שמתעדכנת באותה טרנזקציה של שינוי הסטטוס, או Indexed View עם `COUNT_BIG`.
+
+### אין טעינה מלאה לפני Pagination או Filtering
+
+כל השאילתות שנמדדו נבנות כ-`IQueryable`, ומתורגמות ל-SQL אחד עם `WHERE`, `ORDER BY` ו-`OFFSET/FETCH`. אף שאילתה לא מחזירה לשרת יותר מ-`pageSize` שורות, כפי שאפשר לראות ב-SQL שבלוג ובאופרטור `Top` בתוכניות הביצוע.
 
 ---
 
