@@ -9,6 +9,7 @@ namespace RequestsManagement.Application.Requests;
 internal sealed partial class RequestStatusService(
     IRequestRepository repository,
     IRequestQueryService queryService,
+    IRequestCacheInvalidator cacheInvalidator,
     TimeProvider timeProvider,
     ILogger<RequestStatusService> logger) : IRequestStatusService
 {
@@ -19,13 +20,20 @@ internal sealed partial class RequestStatusService(
         CancellationToken cancellationToken)
     {
         var request = await repository.GetByIdAsync(requestId, cancellationToken);
-        return await ApplyStatusChangeAsync(
+        var result = await ApplyStatusChangeAsync(
             requestId,
             request,
             command.Status,
             DecodeVersion(command.Version),
             changedBy,
             cancellationToken);
+
+        if (result.Outcome == StatusUpdateOutcome.Updated)
+        {
+            await cacheInvalidator.InvalidateAsync(CancellationToken.None);
+        }
+
+        return result;
     }
 
     public async Task<BulkStatusUpdateResultDto> BulkUpdateStatusAsync(
@@ -52,6 +60,11 @@ internal sealed partial class RequestStatusService(
         }
 
         var updatedCount = results.Count(result => result.Outcome == StatusUpdateOutcome.Updated);
+        if (updatedCount > 0)
+        {
+            await cacheInvalidator.InvalidateAsync(CancellationToken.None);
+        }
+
         LogBulkUpdateCompleted(logger, command.Items.Count, updatedCount, command.Status);
 
         return new BulkStatusUpdateResultDto(

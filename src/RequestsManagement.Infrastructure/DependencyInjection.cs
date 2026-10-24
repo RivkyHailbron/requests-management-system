@@ -1,7 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using RequestsManagement.Application.Requests;
+using RequestsManagement.Infrastructure.Caching;
 using RequestsManagement.Infrastructure.Persistence;
 using RequestsManagement.Infrastructure.Requests;
 
@@ -18,8 +21,21 @@ public static class DependencyInjection
 
         services.AddDbContext<RequestsDbContext>(options => options.UseSqlServer(connectionString));
 
-        services.AddScoped<IRequestQueryService, RequestQueryService>();
+        services
+            .AddOptions<CacheOptions>()
+            .Bind(configuration.GetSection(CacheOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services.AddHybridCache();
+
+        services.AddScoped<RequestQueryService>();
+        services.AddScoped<IRequestQueryService>(provider => new CachedRequestQueryService(
+            provider.GetRequiredService<RequestQueryService>(),
+            provider.GetRequiredService<HybridCache>(),
+            provider.GetRequiredService<IOptions<CacheOptions>>()));
         services.AddScoped<IRequestRepository, RequestRepository>();
+        services.AddSingleton<IRequestCacheInvalidator, RequestCacheInvalidator>();
 
         return services;
     }
