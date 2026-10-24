@@ -1,0 +1,13 @@
+.bulk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: var(--mat-sys-secondary-container);
+
+  &__limit {
+    color: var(--mat-sys-error);
+  }
+}

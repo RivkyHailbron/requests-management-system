@@ -39,8 +39,9 @@
    - [היסטוריית שינויים (Audit)](#היסטוריית-שינויים-audit)
    - [עדכון מרובה (Bulk)](#עדכון-מרובה-bulk)
 9. [Cache](#cache)
-10. [בדיקות אוטומטיות](#בדיקות-אוטומטיות)
-11. [הרצה מקומית](#הרצה-מקומית)
+10. [צד לקוח (Angular)](#צד-לקוח-angular)
+11. [בדיקות אוטומטיות](#בדיקות-אוטומטיות)
+12. [הרצה מקומית](#הרצה-מקומית)
 
 ---
 
@@ -57,7 +58,7 @@
 | 4 | עדכון סטטוס, Concurrency והיסטוריית שינויים | הושלם |
 | 5 | עדכון מרובה (Bulk) | הושלם |
 | 6 | Cache | הושלם |
-| 7 | צד לקוח (Angular) | מתוכנן |
+| 7 | צד לקוח (Angular) | הושלם |
 | 8 | מדידת ביצועים | מתוכנן |
 | 9 | היערכות להרצה ותיעוד סופי | מתוכנן |
 
@@ -669,6 +670,84 @@ GET /api/requests?status=InProgress&status=Waiting&priority=High&search=permit&s
 
 ---
 
+## צד לקוח (Angular)
+
+Angular 20 עם Standalone Components, ‏Signals, ‏RxJS ו-Angular Material. כל הרכיבים מוגדרים עם `OnPush`.
+
+### מבנה
+
+```
+client/requests-management-web/src/app/
+├── core/
+│   ├── config/app-config.ts            קונפיגורציה (InjectionToken): כתובת API, Debounce, גדלי עמוד, מגבלת Bulk
+│   ├── http/user-id.interceptor.ts     הוספת X-User-Id לכל בקשה
+│   ├── http/problem-details.ts         פענוח ProblemDetails להודעת שגיאה קריאה
+│   └── user/current-user.ts            המשתמש הפעיל (Signal)
+├── shared/state-message/               רכיב אחיד למצבי Loading, Empty ו-Error
+└── features/requests/
+    ├── models/                         טיפוסים תואמים לחוזה ה-API
+    ├── data/requests-api.ts            שכבת HTTP בלבד, ללא State
+    ├── state/requests-store.ts         ניהול State וזרימות RxJS
+    ├── requests-page/                  רכיב Container: מחבר בין ה-Store לרכיבי התצוגה
+    ├── requests-filters/               טופס סינון וחיפוש
+    ├── requests-table/                 טבלה עם מיון ובחירה
+    ├── requests-summary/               הצגת ה-Aggregations
+    ├── bulk-status-bar/                עדכון מרובה לפניות שנבחרו
+    ├── status-update-dialog/           עדכון סטטוס וטיפול ב-409
+    └── request-history-dialog/         היסטוריית שינויים
+```
+
+### הפרדת אחריות
+
+| שכבה | אחריות |
+|---|---|
+| `RequestsApi` | קריאות HTTP בלבד. ממפה את מצב השאילתה ל-Query String ולא מחזיקה State |
+| `RequestsStore` | ה-State של המסך: שאילתה נוכחית, תוצאות, מצבי טעינה ושגיאה, נתונים מסכמים ומפת המעברים. כל זרימות ה-RxJS נמצאות כאן. מסופק ברמת הרכיב (`providers`), ולכן נוצר ומושמד יחד עם המסך |
+| `RequestsPage` | Container: מעביר נתונים מה-Store לרכיבים, ופותח דיאלוגים |
+| רכיבי תצוגה | מקבלים `input()` ומדווחים `output()`. אין להם גישה ל-API או ל-Store, ולכן הם פשוטים לבדיקה ולשימוש חוזר. הדיאלוגים משתמשים ב-Store שהם מקבלים דרך ה-Injector של המסך |
+
+### זרימות RxJS
+
+- **Debounce:** כל שינוי בטופס הסינון נשלח ל-Store, שמפעיל `debounceTime` (400ms, מהקונפיגורציה) ו-`distinctUntilChanged`. הקלדה מהירה יוצרת בקשה אחת בלבד, ושינוי שמחזיר את אותם ערכים לא יוצר בקשה בכלל. כל שינוי סינון מחזיר לעמוד 1.
+- **ביטול בקשות קודמות:** כל שינוי בשאילתה (סינון, מיון, עמוד או רענון) עובר דרך `switchMap`. כשמגיעה שאילתה חדשה, הבקשה הקודמת מבוטלת, כך שתשובה ישנה שמגיעה באיחור לא יכולה לדרוס תוצאה חדשה. ה-`CancellationToken` בשרת מבטל במקביל את השאילתה ב-DB.
+- **הכול בשרת:** חיפוש, סינון, מיון ודפדוף נשלחים כפרמטרים ל-API. הלקוח מחזיק רק את העמוד הנוכחי.
+- **שגיאות:** `catchError` נמצא בתוך ה-`switchMap`. שגיאה בבקשה אחת מציגה מצב Error, אבל לא סוגרת את הזרימה, והבקשה הבאה תעבוד כרגיל.
+
+### מצבי UI
+
+| מצב | הצגה |
+|---|---|
+| Loading | Progress Bar מעל הטבלה. התוצאות הקודמות נשארות על המסך, כדי שהמסך לא יקפוץ |
+| Empty | הודעה "No requests match the current filters" |
+| Error | הודעת שגיאה מתוך ה-ProblemDetails, וכפתור "Try again" |
+
+אותם מצבים קיימים גם בנתונים המסכמים ובדיאלוג ההיסטוריה.
+
+### עדכון סטטוס וטיפול ב-409
+
+- **רק מעברים מותרים:** הדיאלוג מציג רק את הסטטוסים שאליהם מותר לעבור. המפה נטענת מ-`GET /api/requests/status-transitions`, כך שהכלל מוגדר במקום אחד בשרת ולא משוכפל בלקוח. פנייה בסטטוס סופי מוצגת עם הסבר, בלי אפשרות שינוי.
+- **הגרסה נשלחת עם כל עדכון:** ה-`version` שהתקבל עם הפנייה נשלח בכל עדכון.
+- **409 Conflict:** הדיאלוג נשאר פתוח, ומציג את המצב העדכני מתוך `currentRequest` שהשרת מחזיר, כולל הסטטוס החדש והגרסה החדשה. רשימת הסטטוסים המותרים מתעדכנת בהתאם, והמשתמש מתבקש לבחור שוב. אין צורך בקריאה נוספת לשרת, ואין סיכוי לדרוס בטעות את השינוי של המשתמש השני.
+- **שגיאות אחרות** (422, ‏404 או שגיאת רשת) מוצגות בתוך הדיאלוג.
+- **אחרי הצלחה:** הרשימה והנתונים המסכמים נטענים מחדש.
+
+### עדכון מרובה
+
+- **בחירה:** בוחרים פניות בטבלה (כולל "בחר הכול בעמוד"). מופיע פס פעולה עם בחירת סטטוס יעד.
+- **מגבלה:** מגבלת 100 הפניות נאכפת גם ב-UI.
+- **התוצאה:** מוצגת כסיכום, למשל: `Updated 3 of 5. Not updated: 1 changed by another user, 1 transition not allowed.`
+- **ניקוי הבחירה:** הבחירה מתאפסת בכל טעינה של עמוד, כדי שלא יישלחו גרסאות ישנות.
+
+### זיהוי המשתמש
+
+בשדה "Acting as" בסרגל העליון בוחרים את שם המשתמש. ה-Interceptor מוסיף אותו כ-`X-User-Id` לכל בקשה, והוא נרשם כ-`ChangedBy` בהיסטוריה. כך אפשר להדגים שני משתמשים בשני חלונות ולראות את טיפול ה-409.
+
+### תקשורת עם ה-API
+
+בפיתוח, `ng serve` משתמש ב-`proxy.conf.json`, שמעביר את כל הבקשות שמתחילות ב-`/api` ל-`http://localhost:5175`. הלקוח והשרת נראים לדפדפן כאותו Origin, ולכן אין צורך להגדיר CORS בשרת.
+
+---
+
 ## בדיקות אוטומטיות
 
 | פרויקט | סוג | מה נבדק |
@@ -686,6 +765,7 @@ GET /api/requests?status=InProgress&status=Waiting&priority=High&search=permit&s
 | `GetRequests_WithInvalidParameters_ReturnsValidationProblem` | ‏400 עם שגיאה לכל פרמטר לא תקין |
 | `GetRequest_WhenRequestDoesNotExist_ReturnsNotFound` | ‏404 לפנייה שאינה קיימת |
 | `GetSummary_ReturnsCountsForEveryStatusAndPriority` | ה-Aggregations מכילים את כל הערכים והסכומים עקביים |
+| `GetStatusTransitions_ReturnsAllowedTargetsForEveryStatus` | מפת המעברים שהלקוח משתמש בה מכילה את כל הסטטוסים ותואמת לכללי ה-Domain |
 | `UpdateStatus_WithAllowedTransition_UpdatesRequestAndRecordsHistory` | עדכון תקין: הסטטוס משתנה, `version` ו-`UpdatedAt` מתעדכנים, ונרשמת רשומת היסטוריה עם `ChangedBy` |
 | `UpdateStatus_WithConcurrentUpdates_OnlyOneSucceedsAndOtherGetsConflict` | שני עדכונים מקבילים עם אותה גרסה: בדיוק אחד מקבל 200, השני 409, ונרשמת רשומת היסטוריה אחת בלבד |
 | `UpdateStatus_WithStaleVersion_ReturnsConflictWithCurrentRequest` | עדכון עם גרסה ישנה מקבל 409 יחד עם המצב העדכני של הפנייה |
@@ -765,4 +845,14 @@ dotnet tool restore
 dotnet ef migrations add <MigrationName> --project src/RequestsManagement.Infrastructure --startup-project src/RequestsManagement.Api --output-dir Persistence/Migrations
 ```
 
-הוראות להרצת צד הלקוח יתווספו בשלב 7.
+### הרצת צד הלקוח
+
+כשה-API רץ (ראו למעלה):
+
+```bash
+cd client/requests-management-web
+npm install
+npm start
+```
+
+האפליקציה זמינה בכתובת `http://localhost:4200`. אם הפורט תפוס, אפשר להריץ `npm start -- --port 4300`.

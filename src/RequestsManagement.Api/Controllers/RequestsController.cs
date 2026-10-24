@@ -41,6 +41,13 @@ public sealed class RequestsController(
     public async Task<ActionResult<RequestsSummaryDto>> GetSummaryAsync(CancellationToken cancellationToken) =>
         Ok(await queryService.GetSummaryAsync(cancellationToken));
 
+    [HttpGet("status-transitions")]
+    [ProducesResponseType<IReadOnlyDictionary<RequestStatus, IReadOnlySet<RequestStatus>>>(StatusCodes.Status200OK)]
+    public ActionResult<IReadOnlyDictionary<RequestStatus, IReadOnlySet<RequestStatus>>> GetStatusTransitions() =>
+        Ok(Enum.GetValues<RequestStatus>().ToDictionary(
+            status => status,
+            RequestStatusTransitions.GetAllowedTargets));
+
     [HttpGet("{id:int}/history")]
     [ProducesResponseType<IReadOnlyList<RequestStatusHistoryDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]

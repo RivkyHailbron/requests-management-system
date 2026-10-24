@@ -1,0 +1,30 @@
+<section class="summary" aria-label="Requests summary">
+  <mat-card appearance="outlined" class="summary__card">
+    <span class="summary__label">Total</span>
+    <span class="summary__value">{{ summary().totalCount | number }}</span>
+  </mat-card>
+
+  <mat-card appearance="outlined" class="summary__card">
+    <span class="summary__label">By status</span>
+    <dl class="summary__list">
+      @for (entry of summary().byStatus; track entry.status) {
+        <div>
+          <dt>{{ entry.status }}</dt>
+          <dd>{{ entry.count | number }}</dd>
+        </div>
+      }
+    </dl>
+  </mat-card>
+
+  <mat-card appearance="outlined" class="summary__card">
+    <span class="summary__label">By priority</span>
+    <dl class="summary__list">
+      @for (entry of summary().byPriority; track entry.priority) {
+        <div>
+          <dt>{{ entry.priority }}</dt>
+          <dd>{{ entry.count | number }}</dd>
+        </div>
+      }
+    </dl>
+  </mat-card>
+</section>

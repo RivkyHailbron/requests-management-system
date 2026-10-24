@@ -1,0 +1,44 @@
+.summary {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.5fr) 2fr 1.5fr;
+  gap: 12px;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+
+  &__card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 16px;
+  }
+
+  &__label {
+    font-size: 0.8rem;
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  &__value {
+    font-size: 1.75rem;
+    font-weight: 500;
+  }
+
+  &__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    margin: 0;
+
+    dt {
+      font-size: 0.8rem;
+      color: var(--mat-sys-on-surface-variant);
+    }
+
+    dd {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 500;
+    }
+  }
+}

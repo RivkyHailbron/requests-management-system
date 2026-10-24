@@ -1,0 +1,31 @@
+<h2 mat-dialog-title>Status history · #{{ request.id }}</h2>
+
+<mat-dialog-content>
+  @let current = state();
+  @switch (current.kind) {
+    @case ('loading') {
+      <app-state-message kind="loading" message="Loading history…" />
+    }
+    @case ('error') {
+      <app-state-message kind="error" [message]="current.message" />
+    }
+    @case ('loaded') {
+      @if (current.entries.length === 0) {
+        <app-state-message kind="empty" message="No status changes were made through the system yet." />
+      } @else {
+        <ol class="timeline">
+          @for (entry of current.entries; track entry.id) {
+            <li>
+              <span class="timeline__change">{{ entry.previousStatus }} → {{ entry.newStatus }}</span>
+              <span class="timeline__meta">{{ entry.changedAt | date: 'medium' }} · {{ entry.changedBy }}</span>
+            </li>
+          }
+        </ol>
+      }
+    }
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" mat-dialog-close>Close</button>
+</mat-dialog-actions>

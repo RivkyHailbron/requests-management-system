@@ -1,0 +1,33 @@
+.table-container {
+  overflow: auto;
+  max-height: 60vh;
+}
+
+table {
+  width: 100%;
+}
+
+.actions {
+  white-space: nowrap;
+  text-align: end;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  background: var(--mat-sys-surface-container-high);
+
+  &[data-status='New'] {
+    background: var(--mat-sys-primary-container);
+  }
+
+  &[data-status='Completed'] {
+    background: var(--mat-sys-tertiary-container);
+  }
+
+  &[data-priority='High'] {
+    background: var(--mat-sys-error-container);
+  }
+}

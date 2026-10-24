@@ -1,0 +1,43 @@
+<h2 mat-dialog-title>Change status · #{{ request().id }}</h2>
+
+<mat-dialog-content>
+  @if (saving()) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+
+  <p class="request-title">{{ request().title }}</p>
+  <p>Current status: <strong>{{ request().status }}</strong></p>
+
+  @if (conflictMessage(); as message) {
+    <p class="message message--warning" role="alert">{{ message }}</p>
+  }
+
+  @if (errorMessage(); as message) {
+    <p class="message message--error" role="alert">{{ message }}</p>
+  }
+
+  @if (allowedStatuses().length > 0) {
+    <mat-form-field appearance="outline" class="status-field">
+      <mat-label>New status</mat-label>
+      <mat-select [formControl]="statusControl">
+        @for (status of allowedStatuses(); track status) {
+          <mat-option [value]="status">{{ status }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  } @else {
+    <p class="message">This request is in a final status and cannot be changed.</p>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" mat-dialog-close>Cancel</button>
+  <button
+    mat-flat-button
+    type="button"
+    [disabled]="statusControl.invalid || saving()"
+    (click)="save()"
+  >
+    Save
+  </button>
+</mat-dialog-actions>

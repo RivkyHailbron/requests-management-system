@@ -1,0 +1,16 @@
+.toolbar {
+  gap: 12px;
+
+  &__title {
+    font-weight: 500;
+  }
+
+  &__spacer {
+    flex: 1;
+  }
+
+  &__user {
+    width: 220px;
+    font-size: 0.9rem;
+  }
+}

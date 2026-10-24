@@ -1,0 +1,21 @@
+<div class="state" [class.state--error]="kind() === 'error'" role="status">
+  @switch (kind()) {
+    @case ('loading') {
+      <mat-spinner diameter="32" />
+    }
+    @case ('empty') {
+      <mat-icon>inbox</mat-icon>
+    }
+    @case ('error') {
+      <mat-icon>error_outline</mat-icon>
+    }
+  }
+
+  @if (message()) {
+    <p>{{ message() }}</p>
+  }
+
+  @if (kind() === 'error') {
+    <button mat-stroked-button type="button" (click)="retry.emit()">Try again</button>
+  }
+</div>

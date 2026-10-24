@@ -1,0 +1,19 @@
+<mat-toolbar class="toolbar">
+  <mat-icon>assignment</mat-icon>
+  <span class="toolbar__title">Requests Management</span>
+  <span class="toolbar__spacer"></span>
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="toolbar__user">
+    <mat-label>Acting as</mat-label>
+    <mat-icon matPrefix>person</mat-icon>
+    <input
+      matInput
+      [value]="currentUser.id()"
+      (change)="currentUser.change($any($event.target).value)"
+      autocomplete="off"
+    />
+  </mat-form-field>
+</mat-toolbar>
+
+<main>
+  <router-outlet />
+</main>

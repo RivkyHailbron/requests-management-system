@@ -1,0 +1,23 @@
+.request-title {
+  font-weight: 500;
+}
+
+.status-field {
+  width: 100%;
+}
+
+.message {
+  margin: 8px 0;
+  padding: 8px 12px;
+  border-radius: 4px;
+  background: var(--mat-sys-surface-container);
+
+  &--warning {
+    background: var(--mat-sys-tertiary-container);
+  }
+
+  &--error {
+    background: var(--mat-sys-error-container);
+    color: var(--mat-sys-on-error-container);
+  }
+}

@@ -1,0 +1,54 @@
+<section class="page">
+  @if (store.summary(); as summary) {
+    <app-requests-summary [summary]="summary" />
+  } @else if (store.summaryError(); as error) {
+    <app-state-message kind="error" [message]="error" (retry)="store.reload()" />
+  }
+
+  <mat-card appearance="outlined" class="page__card">
+    <app-requests-filters (filtersChange)="store.changeFilters($event)" />
+
+    @if (selected().length > 0) {
+      <app-bulk-status-bar
+        [selectedCount]="selected().length"
+        [maxItems]="config.maxBulkItems"
+        [busy]="bulkBusy()"
+        (apply)="applyBulkStatus($event)"
+        (clearSelection)="selected.set([])"
+      />
+    }
+
+    @if (store.loading()) {
+      <mat-progress-bar mode="indeterminate" />
+    }
+
+    @if (store.error(); as error) {
+      <app-state-message kind="error" [message]="error" (retry)="store.reload()" />
+    } @else if (store.isEmpty()) {
+      <app-state-message kind="empty" message="No requests match the current filters." />
+    } @else if (store.page(); as page) {
+      <app-requests-table
+        [requests]="page.items"
+        [sortBy]="store.query().sortBy"
+        [sortDirection]="store.query().sortDirection"
+        [selectedIds]="selectedIds()"
+        (sortChange)="onSortChange($event)"
+        (selectionChange)="selected.set($event)"
+        (statusChangeRequested)="openStatusDialog($event)"
+        (historyRequested)="openHistoryDialog($event)"
+      />
+    } @else {
+      <app-state-message kind="loading" message="Loading requests…" />
+    }
+
+    <mat-paginator
+      [length]="store.page()?.totalCount ?? 0"
+      [pageIndex]="store.query().page - 1"
+      [pageSize]="store.query().pageSize"
+      [pageSizeOptions]="config.pageSizeOptions"
+      [disabled]="store.loading()"
+      showFirstLastButtons
+      (page)="onPageChange($event)"
+    />
+  </mat-card>
+</section>

@@ -101,6 +101,18 @@ public sealed class GetRequestsTests(RequestsApiFactory factory)
         Assert.True(summary.ByStatus.Single(entry => entry.Status == RequestStatus.Waiting).Count > 0);
     }
 
+    [Fact]
+    public async Task GetStatusTransitions_ReturnsAllowedTargetsForEveryStatus()
+    {
+        var transitions = await _client.GetFromJsonAsync<Dictionary<RequestStatus, RequestStatus[]>>(
+            new Uri($"{RequestsUrl}/status-transitions", UriKind.Relative), ApiJson.Options, CancellationToken);
+
+        Assert.NotNull(transitions);
+        Assert.Equal(Enum.GetValues<RequestStatus>(), transitions.Keys.Order());
+        Assert.Equal([RequestStatus.InProgress], transitions[RequestStatus.New]);
+        Assert.Empty(transitions[RequestStatus.Completed]);
+    }
+
     private async Task<PagedResult<RequestDto>> GetPageAsync(string queryString)
     {
         var result = await _client.GetFromJsonAsync<PagedResult<RequestDto>>(
