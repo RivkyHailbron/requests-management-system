@@ -19,6 +19,7 @@ public static class DependencyInjection
         services.AddDbContext<RequestsDbContext>(options => options.UseSqlServer(connectionString));
 
         services.AddScoped<IRequestQueryService, RequestQueryService>();
+        services.AddScoped<IRequestRepository, RequestRepository>();
 
         return services;
     }

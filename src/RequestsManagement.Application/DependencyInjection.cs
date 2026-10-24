@@ -1,7 +1,9 @@
 using System.Globalization;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using RequestsManagement.Application.Common;
+using RequestsManagement.Application.Requests;
 
 namespace RequestsManagement.Application;
 
@@ -17,6 +19,9 @@ public static class DependencyInjection
 
         ValidatorOptions.Global.LanguageManager.Culture = CultureInfo.InvariantCulture;
         services.AddValidatorsFromAssemblyContaining<PaginationOptions>(ServiceLifetime.Singleton);
+
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddScoped<IRequestStatusService, RequestStatusService>();
 
         return services;
     }

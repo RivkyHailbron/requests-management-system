@@ -11,4 +11,6 @@ public interface IRequestQueryService
     Task<RequestDto?> GetByIdAsync(int id, CancellationToken cancellationToken);
 
     Task<RequestsSummaryDto> GetSummaryAsync(CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<RequestStatusHistoryDto>?> GetHistoryAsync(int requestId, CancellationToken cancellationToken);
 }

@@ -34,8 +34,11 @@
    - [מניעת טעינת כלל הנתונים לזיכרון](#מניעת-טעינת-כלל-הנתונים-לזיכרון)
    - [תמיכת האינדקסים בתרחישי החיפוש והסינון](#תמיכת-האינדקסים-בתרחישי-החיפוש-והסינון)
    - [Validation, שגיאות ו-Logging](#validation-שגיאות-ו-logging)
-8. [בדיקות אוטומטיות](#בדיקות-אוטומטיות)
-9. [הרצה מקומית](#הרצה-מקומית)
+8. [עדכון סטטוס, Concurrency והיסטוריה](#עדכון-סטטוס-concurrency-והיסטוריה)
+   - [מניעת Lost Update](#מניעת-lost-update)
+   - [היסטוריית שינויים (Audit)](#היסטוריית-שינויים-audit)
+9. [בדיקות אוטומטיות](#בדיקות-אוטומטיות)
+10. [הרצה מקומית](#הרצה-מקומית)
 
 ---
 
@@ -49,7 +52,7 @@
 | 1 | תשתית Solution וקונבנציות | הושלם |
 | 2 | מודל נתונים, אינדקסים ו-Seed של 100K רשומות | הושלם |
 | 3 | API לשליפת נתונים ו-Aggregations | הושלם |
-| 4 | עדכון סטטוס, Concurrency והיסטוריית שינויים | מתוכנן |
+| 4 | עדכון סטטוס, Concurrency והיסטוריית שינויים | הושלם |
 | 5 | עדכון מרובה (Bulk) | מתוכנן |
 | 6 | Cache | מתוכנן |
 | 7 | צד לקוח (Angular) | מתוכנן |
@@ -137,7 +140,7 @@ stateDiagram-v2
 | `search` | חיפוש טקסטואלי ב-`Title` וב-`OrganizationName` |
 | `sortBy`, `sortDirection` | מיון לפי `CreatedAt`, `UpdatedAt`, `Priority`, `Status`, `Title` או `OrganizationName`, בכיוון `Asc` או `Desc` |
 
-**זיהוי המשתמש המבצע:** לא נדרש מנגנון הזדהות, ולכן המשתמש מזוהה באמצעות Header ‏`X-User-Id`. הקריאה של ה-Header עטופה ב-`ICurrentUserProvider`, כך שאפשר להחליף אותה ב-Claims של JWT בלי לשנות את הלוגיקה העסקית.
+**זיהוי המשתמש המבצע:** לא נדרש מנגנון הזדהות, ולכן בפעולות עדכון המשתמש מזוהה באמצעות Header חובה ‏`X-User-Id`. ה-Header נקרא רק בשכבת ה-Api ומועבר לשירות כפרמטר, כך שמעבר ל-Claims של JWT ישנה רק את ה-Controller.
 
 **הגנה מפני עדכון מתחרה:** כל פנייה מוחזרת ללקוח עם שדה `version`, שהוא ה-`RowVersion` מקודד ב-Base64. בבקשת עדכון הלקוח מחזיר את הגרסה שבידיו, והעדכון מתבצע רק אם הגרסה ב-DB זהה לה.
 
@@ -532,6 +535,53 @@ GET /api/requests?status=InProgress&status=Waiting&priority=High&search=permit&s
 
 ---
 
+## עדכון סטטוס, Concurrency והיסטוריה
+
+| Endpoint | תיאור |
+|---|---|
+| `PATCH /api/requests/{id}/status` | עדכון סטטוס. גוף הבקשה: `{ "status": "InProgress", "version": "AAAAAAABOHw=" }`. ‏Header חובה: ‏`X-User-Id` |
+| `GET /api/requests/{id}/history` | היסטוריית שינויי הסטטוס של הפנייה, בסדר כרונולוגי, או 404 אם הפנייה לא קיימת |
+
+**תשובות לעדכון:**
+
+| מצב | קוד | גוף התשובה |
+|---|---|---|
+| עודכן | `200` | הפנייה המעודכנת עם ה-`version` החדש |
+| סטטוס לא קיים, `version` לא תקין או Header חסר | `400` | ‏`ValidationProblemDetails` עם שגיאה לכל שדה |
+| הפנייה לא קיימת | `404` | ProblemDetails |
+| הגרסה שנשלחה אינה עדכנית | `409` | ProblemDetails עם `currentRequest`, המצב העדכני של הפנייה, כדי שהלקוח יוכל להציג למשתמש מה השתנה בלי קריאה נוספת |
+| מעבר סטטוס אסור | `422` | ProblemDetails עם `allowedStatuses`, הסטטוסים שאליהם מותר לעבור |
+
+**סדר הבדיקות בשירות (`RequestStatusService`):** קיום הפנייה, אחר כך התאמת הגרסה, ורק אז חוקיות המעבר. הגרסה נבדקת לפני המעבר כי לקוח שמחזיק מצב ישן צריך קודם לרענן אותו. ייתכן שהמעבר שהוא מבקש כבר בוצע או כבר לא רלוונטי.
+
+### מניעת Lost Update
+
+ההגנה נאכפת בשתי שכבות, ושתיהן בצד השרת:
+
+1. **בדיקה מוקדמת בשירות:** אחרי טעינת הפנייה, ה-`RowVersion` שלה מושווה לגרסה שהלקוח שלח. אם הן שונות, מוחזר 409 מיד, בלי ניסיון כתיבה.
+2. **אכיפה אטומית ב-DB:** ‏`RowVersion` מוגדר ב-EF כ-Concurrency Token, והגרסה שהלקוח שלח נקבעת כ-`OriginalValue`. לכן EF מייצר:
+   ```sql
+   UPDATE Requests SET Status = @status, UpdatedAt = @now
+   WHERE Id = @id AND RowVersion = @expectedVersion
+   ```
+   אם בין הקריאה לכתיבה מישהו אחר עדכן את השורה, ה-`UPDATE` לא מעדכן אף שורה, EF זורק `DbUpdateConcurrencyException`, והשירות מחזיר 409 עם המצב העדכני.
+
+השכבה השנייה היא זו שמבטיחה נכונות גם כששתי בקשות מגיעות באותו רגע וקוראות את אותה גרסה. השכבה הראשונה רק חוסכת כתיבה מיותרת במקרה הנפוץ.
+
+**עקביות `UpdatedAt` ו-`RowVersion`:**
+- ‏`UpdatedAt` מתעדכן אך ורק בתוך `Request.ChangeStatus`, עם אותו זמן שנרשם ב-`ChangedAt` של רשומת ההיסטוריה. הזמן מגיע מ-`TimeProvider`, ולכן אפשר לשלוט בו בבדיקות.
+- ‏`RowVersion` מתעדכן אוטומטית על ידי SQL Server בכל `UPDATE`, ואי אפשר לשכוח לעדכן אותו. הגרסה החדשה חוזרת ללקוח בתשובה.
+
+**למה Optimistic ולא Pessimistic Locking:** התנגשויות על אותה פנייה נדירות, ונעילה (`UPDATE` lock או `SERIALIZABLE`) הייתה מחזיקה נעילות בזמן שהמשתמש חושב ופוגעת בתפוקה. ‏Optimistic Concurrency לא נועל דבר, ומזהה את ההתנגשות רק כשהיא באמת קורית.
+
+### היסטוריית שינויים (Audit)
+
+- רשומת ההיסטוריה נוצרת על ידי הישות עצמה (`ChangeStatus` מחזיר אותה), ונשמרת באותו `SaveChanges` של העדכון, כלומר באותה טרנזקציה. עדכון שנכשל, בגלל Conflict או מכל סיבה אחרת, לא משאיר רשומת היסטוריה, ולהפך.
+- כל רשומה כוללת `RequestId`, `PreviousStatus`, `NewStatus`, `ChangedAt` ו-`ChangedBy`.
+- השליפה נתמכת באינדקס `IX_RequestStatusHistory_RequestId_ChangedAt`, שמחזיר את ההיסטוריה של פנייה ממוינת בלי Sort.
+
+---
+
 ## בדיקות אוטומטיות
 
 | פרויקט | סוג | מה נבדק |
@@ -549,6 +599,12 @@ GET /api/requests?status=InProgress&status=Waiting&priority=High&search=permit&s
 | `GetRequests_WithInvalidParameters_ReturnsValidationProblem` | ‏400 עם שגיאה לכל פרמטר לא תקין |
 | `GetRequest_WhenRequestDoesNotExist_ReturnsNotFound` | ‏404 לפנייה שאינה קיימת |
 | `GetSummary_ReturnsCountsForEveryStatusAndPriority` | ה-Aggregations מכילים את כל הערכים והסכומים עקביים |
+| `UpdateStatus_WithAllowedTransition_UpdatesRequestAndRecordsHistory` | עדכון תקין: הסטטוס משתנה, `version` ו-`UpdatedAt` מתעדכנים, ונרשמת רשומת היסטוריה עם `ChangedBy` |
+| `UpdateStatus_WithConcurrentUpdates_OnlyOneSucceedsAndOtherGetsConflict` | שני עדכונים מקבילים עם אותה גרסה: בדיוק אחד מקבל 200, השני 409, ונרשמת רשומת היסטוריה אחת בלבד |
+| `UpdateStatus_WithStaleVersion_ReturnsConflictWithCurrentRequest` | עדכון עם גרסה ישנה מקבל 409 יחד עם המצב העדכני של הפנייה |
+| `UpdateStatus_WithDisallowedTransition_ReturnsUnprocessableEntity` | מעבר אסור מקבל 422, בלי שינוי ובלי היסטוריה |
+| `UpdateStatus_WhenRequestDoesNotExist_ReturnsNotFound` | ‏404 בעדכון פנייה שאינה קיימת |
+| `UpdateStatus_WithInvalidInput_ReturnsValidationProblem` | ‏400 לסטטוס לא קיים, לגרסה לא תקינה ולבקשה בלי `X-User-Id` |
 
 **החלטות:**
 - **SQL Server אמיתי ולא InMemory Provider:** ‏InMemory לא מתרגם LIKE, לא תומך ב-`rowversion` ולא מתנהג כמו SQL Server בטרנזקציות. בדיקה של Concurrency מולו לא הייתה מוכיחה דבר.

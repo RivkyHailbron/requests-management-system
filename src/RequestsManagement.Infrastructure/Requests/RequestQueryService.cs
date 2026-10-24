@@ -39,6 +39,30 @@ internal sealed class RequestQueryService(
             .ProjectToDto()
             .SingleOrDefaultAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<RequestStatusHistoryDto>?> GetHistoryAsync(
+        int requestId,
+        CancellationToken cancellationToken)
+    {
+        if (!await dbContext.Requests.AnyAsync(request => request.Id == requestId, cancellationToken))
+        {
+            return null;
+        }
+
+        return await dbContext.RequestStatusHistory
+            .AsNoTracking()
+            .Where(entry => entry.RequestId == requestId)
+            .OrderBy(entry => entry.ChangedAt)
+            .ThenBy(entry => entry.Id)
+            .Select(entry => new RequestStatusHistoryDto(
+                entry.Id,
+                entry.RequestId,
+                entry.PreviousStatus,
+                entry.NewStatus,
+                entry.ChangedAt,
+                entry.ChangedBy))
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<RequestsSummaryDto> GetSummaryAsync(CancellationToken cancellationToken)
     {
         var statusCounts = await dbContext.Requests
