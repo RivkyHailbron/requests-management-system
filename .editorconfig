@@ -80,3 +80,6 @@ dotnet_diagnostic.CA2007.severity = none
 [tests/**.cs]
 dotnet_diagnostic.CA1707.severity = none
 dotnet_naming_rule.async_methods_should_end_with_async.severity = none
+
+[**/Migrations/*.cs]
+generated_code = true

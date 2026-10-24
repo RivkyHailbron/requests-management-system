@@ -26,7 +26,11 @@
 5. [מבנה הפתרון](#מבנה-הפתרון)
    - [שכבות וכיווני תלות](#שכבות-וכיווני-תלות)
    - [קונבנציות ואיכות קוד](#קונבנציות-ואיכות-קוד)
-6. [הרצה מקומית](#הרצה-מקומית)
+6. [בסיס הנתונים](#בסיס-הנתונים)
+   - [סכמה](#סכמה)
+   - [אינדקסים](#אינדקסים)
+   - [נתוני בדיקה (Seed)](#נתוני-בדיקה-seed)
+7. [הרצה מקומית](#הרצה-מקומית)
 
 ---
 
@@ -38,7 +42,7 @@
 |---|---|---|
 | 0 | תכנון, אפיון וחלוקה למשימות | הושלם |
 | 1 | תשתית Solution וקונבנציות | הושלם |
-| 2 | מודל נתונים, אינדקסים ו-Seed של 100K רשומות | מתוכנן |
+| 2 | מודל נתונים, אינדקסים ו-Seed של 100K רשומות | הושלם |
 | 3 | API לשליפת נתונים ו-Aggregations | מתוכנן |
 | 4 | עדכון סטטוס, Concurrency והיסטוריית שינויים | מתוכנן |
 | 5 | עדכון מרובה (Bulk) | מתוכנן |
@@ -379,7 +383,8 @@ requests-management-system/
 │   └── RequestsManagement.IntegrationTests/ בדיקות API מול SQL Server אמיתי
 ├── Directory.Build.props                   הגדרות Build משותפות לכל הפרויקטים
 ├── Directory.Packages.props                ניהול מרוכז של גרסאות חבילות
-├── global.json                             נעילת גרסת ה-SDK
+├── global.json                             נעילת גרסת ה-SDK ו-Test Runner
+├── dotnet-tools.json                       כלים מקומיים (dotnet-ef)
 ├── .editorconfig                           קונבנציות קוד
 └── docker-compose.yml                      סביבת הרצה מקומית
 ```
@@ -407,11 +412,61 @@ flowchart LR
 ### קונבנציות ואיכות קוד
 
 - **`Directory.Build.props`:** ‏`net10.0`, ‏Nullable Reference Types ו-`TreatWarningsAsErrors`. ‏Roslyn Analyzers מופעלים ברמת `latest-recommended`, וכללי הסגנון נאכפים כבר בזמן Build (`EnforceCodeStyleInBuild`).
-- **`Directory.Packages.props`:** כל גרסאות החבילות מנוהלות במקום אחד (Central Package Management). כך לא ייתכנו שתי גרסאות שונות של אותה חבילה בפרויקטים שונים.
+- **`Directory.Packages.props`:** כל גרסאות החבילות מנוהלות במקום אחד (Central Package Management). כך לא ייתכנו שתי גרסאות שונות של אותה חבילה בפרויקטים שונים. בנוסף מופעל Transitive Pinning, שמאפשר לקבע גרסה מתוקנת גם לחבילה עקיפה. כך תוקנה פגיעות אבטחה ידועה ב-`System.Security.Cryptography.Pkcs`, שנגררת דרך SqlClient.
 - **`.editorconfig`:** כללי שמות (`_camelCase` לשדות פרטיים, סיומת `Async` למתודות אסינכרוניות, קידומת `I` לממשקים), ‏File-scoped namespaces, סוגריים מסולסלים חובה ופורמט אחיד לקבצי C# ו-TypeScript.
-- **`global.json`:** הפרויקט נבנה עם ‎.NET SDK 10. גרסאות Feature חדשות יותר מתקבלות אוטומטית.
+- **`global.json`:** הפרויקט נבנה עם ‎.NET SDK 10. גרסאות Feature חדשות יותר מתקבלות אוטומטית. הבדיקות רצות על Microsoft.Testing.Platform, שהוא ה-Runner המומלץ ב-.NET 10.
+- **קוד שנוצר אוטומטית:** קבצי ה-Migrations מסומנים ב-`.editorconfig` כ-`generated_code`, ולכן ה-Analyzers לא חלים עליהם.
 - **קונפיגורציה:** ערכים משתנים כמו סיסמאות ופורטים מגיעים מקובץ `.env` שאינו נשמר ב-Git. הקובץ `.env.example` מתעד את המשתנים הנדרשים.
 - **קומיטים:** לפי [Conventional Commits](https://www.conventionalcommits.org/), קומיט אחד לכל שלב בתוכנית העבודה.
+
+---
+
+## בסיס הנתונים
+
+### סכמה
+
+הסכמה מוגדרת ב-EF Core באמצעות Fluent Configuration (`IEntityTypeConfiguration`), ונוצרת באמצעות Migrations. מגבלות האורך של השדות מוגדרות פעם אחת ב-`RequestConstraints` שב-Domain, ומשמשות גם את תצורת ה-DB וגם את ה-Validation.
+
+| טבלה | הערות |
+|---|---|
+| `Requests` | מפתח ראשי Clustered על `Id` (Identity). ה-enums נשמרים כ-`tinyint`. ‏`RowVersion` מוגדר כ-`rowversion`, ולכן SQL Server מעדכן אותו אוטומטית בכל שינוי בשורה |
+| `RequestStatusHistory` | מפתח ראשי `bigint`, כי טבלת היסטוריה גדלה מהר יותר מטבלת הפניות. ‏FK לפנייה עם `ON DELETE CASCADE` |
+
+הישות `Request` חושפת רק Setters פרטיים. שינוי סטטוס אפשרי רק דרך `ChangeStatus`, שבודק שהמעבר מותר, מעדכן את `UpdatedAt` ומחזיר את רשומת ההיסטוריה. כך אין דרך לשנות סטטוס בלי לייצר Audit.
+
+### אינדקסים
+
+ברירת המחדל של המיון היא `CreatedAt DESC`, ולכן כל אינדקס סינון כולל את `CreatedAt` בסדר יורד כעמודה שנייה. כך SQL Server מסנן ומחזיר את העמוד המבוקש לפי סדר האינדקס, בלי פעולת Sort נפרדת.
+
+| אינדקס | תרחיש שהוא משרת |
+|---|---|
+| `IX_Requests_CreatedAt` (DESC) | רשימת ברירת המחדל וסינון לפי טווח תאריכים |
+| `IX_Requests_Status_CreatedAt` | סינון לפי סטטוס, והתפלגות לפי סטטוס (Aggregation) |
+| `IX_Requests_Priority_CreatedAt` | סינון לפי עדיפות, והתפלגות לפי עדיפות (Aggregation) |
+| `IX_Requests_AssignedTo_CreatedAt` | "הפניות שלי": סינון לפי מטפל |
+| `IX_Requests_OrganizationName_CreatedAt` | סינון לפי ארגון |
+| `IX_RequestStatusHistory_RequestId_ChangedAt` | שליפת היסטוריה של פנייה בסדר כרונולוגי |
+
+מספר האינדקסים מאוזן מול עלות הכתיבה. במערכת הזו יש הרבה יותר קריאות (חיפוש וסינון) מכתיבות (עדכוני סטטוס), ועדכון סטטוס משנה רק את האינדקס על `Status`.
+מדידת ההשפעה של כל אינדקס באמצעות Execution Plans תתועד בשלב הביצועים.
+
+### נתוני בדיקה (Seed)
+
+הכלי `RequestsManagement.Seeder` הוא אפליקציית Console שאחראית גם על החלת ה-Migrations וגם על יצירת הנתונים:
+
+1. אם התבקש איפוס (`Reset`), בסיס הנתונים נמחק ונוצר מחדש.
+2. ה-Migrations מוחלות.
+3. אם כבר קיימות פניות, הכלי מדלג על יצירת הנתונים. לכן אפשר להריץ אותו שוב ושוב בבטחה.
+4. הפניות נוצרות באמצעות Bogus ומוכנסות ב-`SqlBulkCopy` במנות. ‏100,000 רשומות נוצרות בכ-20 שניות.
+
+**החלטות:**
+- **`SqlBulkCopy` במקום EF Core:** הכנסה של 100K ישויות דרך `SaveChanges` איטית בסדר גודל, וצורכת זיכרון רב בגלל ה-Change Tracker. שמות הטבלה והעמודות נקראים מתוך מודל ה-EF, ולכן לא מוגדרים פעמיים.
+- **נתונים מציאותיים:** מאגר של 2,000 ארגונים ו-50 מטפלים, כך שסינון לפי ארגון או מטפל מחזיר כמות משמעותית של תוצאות. התפלגות הסטטוסים והעדיפויות משוקללת, תאריכי היצירה מפוזרים על פני שנתיים, ו-`UpdatedAt` תמיד אחרי `CreatedAt`. לפניות בסטטוס `New` אין מטפל.
+- **Seed קבוע (`RandomSeed`):** אותו Seed מייצר את אותם ערכים בכל הרצה. התאריכים מחושבים יחסית למועד ההרצה, כדי שהנתונים יישארו עדכניים.
+- **היסטוריה:** הכלי יוצר פניות בלבד. היסטוריית סטטוסים נרשמת רק עבור שינויים שבוצעו דרך המערכת, כך שכל רשומת Audit משקפת פעולה אמיתית.
+- **הפרדה מה-API:** ה-API לא מחיל Migrations בעלייה. בסביבה עם כמה מופעי שרת, החלה מקבילית של Migrations עלולה להתנגש, ולכן זו אחריות של כלי נפרד שרץ פעם אחת לפני העלייה.
+
+כל הפרמטרים מוגדרים בקובץ `appsettings.json` של הכלי, תחת `Seed`: ‏`RecordCount`, `BatchSize`, `RandomSeed`, `HistoryDays`, `OrganizationCount`, `AssigneeCount` ו-`Reset`. אפשר לדרוס כל אחד מהם משורת הפקודה.
 
 ---
 
@@ -434,10 +489,36 @@ docker compose up -d sqlserver
 
 הפקודה מרימה SQL Server 2022 בפורט שמוגדר ב-`.env` (ברירת המחדל: `1433`). הנתונים נשמרים ב-Volume, כך שהם לא נמחקים כשהקונטיינר מופעל מחדש.
 
-### בנייה
+### יצירת הסכמה ונתוני הבדיקה
+
+```bash
+dotnet run --project tools/RequestsManagement.Seeder
+```
+
+יצירה מחדש של כל הנתונים מאפס:
+
+```bash
+dotnet run --project tools/RequestsManagement.Seeder -- --Seed:Reset=true
+```
+
+כמות רשומות שונה:
+
+```bash
+dotnet run --project tools/RequestsManagement.Seeder -- --Seed:Reset=true --Seed:RecordCount=250000
+```
+
+### בנייה ובדיקות
 
 ```bash
 dotnet build RequestsManagement.slnx
+dotnet test --solution RequestsManagement.slnx
 ```
 
-הוראות להרצת ה-API, ה-Seed, הבדיקות וצד הלקוח יתווספו בשלבים הבאים.
+### Migrations
+
+```bash
+dotnet tool restore
+dotnet ef migrations add <MigrationName> --project src/RequestsManagement.Infrastructure --startup-project src/RequestsManagement.Api --output-dir Persistence/Migrations
+```
+
+הוראות להרצת ה-API וצד הלקוח יתווספו בשלבים הבאים.
