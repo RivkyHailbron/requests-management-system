@@ -1,30 +1,35 @@
 <section class="summary" aria-label="Requests summary">
-  <mat-card appearance="outlined" class="summary__card">
-    <span class="summary__label">Total</span>
-    <span class="summary__value">{{ summary().totalCount | number }}</span>
+  <mat-card appearance="outlined" class="summary__card summary__card--total">
+    <span class="summary__icon"><mat-icon>inventory_2</mat-icon></span>
+    <span class="summary__label">Total requests</span>
+    <span class="summary__total">{{ summary().totalCount | number }}</span>
   </mat-card>
 
   <mat-card appearance="outlined" class="summary__card">
     <span class="summary__label">By status</span>
-    <dl class="summary__list">
-      @for (entry of summary().byStatus; track entry.status) {
-        <div>
-          <dt>{{ entry.status }}</dt>
-          <dd>{{ entry.count | number }}</dd>
-        </div>
+    <ul class="summary__rows">
+      @for (row of statusRows(); track row.key) {
+        <li class="summary__row" [attr.data-status]="row.key">
+          <span class="summary__row-label">{{ row.label }}</span>
+          <span class="summary__row-value">{{ row.count | number }}</span>
+          <span class="summary__row-share">{{ row.share | percent }}</span>
+          <span class="summary__bar"><span [style.width.%]="row.share * 100"></span></span>
+        </li>
       }
-    </dl>
+    </ul>
   </mat-card>
 
   <mat-card appearance="outlined" class="summary__card">
     <span class="summary__label">By priority</span>
-    <dl class="summary__list">
-      @for (entry of summary().byPriority; track entry.priority) {
-        <div>
-          <dt>{{ entry.priority }}</dt>
-          <dd>{{ entry.count | number }}</dd>
-        </div>
+    <ul class="summary__rows">
+      @for (row of priorityRows(); track row.key) {
+        <li class="summary__row" [attr.data-priority]="row.key">
+          <span class="summary__row-label">{{ row.label }}</span>
+          <span class="summary__row-value">{{ row.count | number }}</span>
+          <span class="summary__row-share">{{ row.share | percent }}</span>
+          <span class="summary__bar"><span [style.width.%]="row.share * 100"></span></span>
+        </li>
       }
-    </dl>
+    </ul>
   </mat-card>
 </section>

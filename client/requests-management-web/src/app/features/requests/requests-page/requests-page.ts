@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, Injector, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { DecimalPipe } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog } from '@angular/material/dialog';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
@@ -27,6 +28,7 @@ const outcomeLabels: Readonly<Record<Exclude<StatusUpdateOutcome, 'Updated'>, st
   selector: 'app-requests-page',
   imports: [
     BulkStatusBar,
+    DecimalPipe,
     MatCardModule,
     MatPaginatorModule,
     MatProgressBarModule,

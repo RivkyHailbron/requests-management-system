@@ -2,6 +2,12 @@
   font-weight: 500;
 }
 
+.current-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .status-field {
   width: 100%;
 }

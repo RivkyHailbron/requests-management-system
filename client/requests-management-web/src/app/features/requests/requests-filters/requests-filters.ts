@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { LookupAutocomplete } from '../../../shared/lookup-autocomplete/lookup-autocomplete';
+import { StatusLabelPipe } from '../status-label.pipe';
 import {
   RequestFilters,
   RequestPriority,
@@ -26,6 +27,7 @@ import {
     MatIconModule,
     MatInputModule,
     MatSelectModule,
+    StatusLabelPipe,
   ],
   templateUrl: './requests-filters.html',
   styleUrl: './requests-filters.scss',

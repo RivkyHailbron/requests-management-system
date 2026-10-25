@@ -1,6 +1,13 @@
 export const requestStatuses = ['New', 'InProgress', 'Waiting', 'Completed'] as const;
 export type RequestStatus = (typeof requestStatuses)[number];
 
+export const requestStatusLabels: Readonly<Record<RequestStatus, string>> = {
+  New: 'New',
+  InProgress: 'In progress',
+  Waiting: 'Waiting',
+  Completed: 'Completed',
+};
+
 export const requestPriorities = ['Low', 'Medium', 'High'] as const;
 export type RequestPriority = (typeof requestPriorities)[number];
 

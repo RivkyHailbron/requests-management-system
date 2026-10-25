@@ -3,11 +3,12 @@ import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
+import { StatusLabelPipe } from '../status-label.pipe';
 import { RequestStatus, requestStatuses } from '../models/request.models';
 
 @Component({
   selector: 'app-bulk-status-bar',
-  imports: [ReactiveFormsModule, MatButtonModule, MatFormFieldModule, MatSelectModule],
+  imports: [ReactiveFormsModule, MatButtonModule, MatFormFieldModule, MatSelectModule, StatusLabelPipe],
   templateUrl: './bulk-status-bar.html',
   styleUrl: './bulk-status-bar.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

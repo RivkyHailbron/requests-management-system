@@ -47,6 +47,16 @@ public sealed class GetRequestsTests(RequestsApiFactory factory)
     }
 
     [Fact]
+    public async Task GetRequests_WithNumericSearch_MatchesRequestId()
+    {
+        var request = await factory.CreateRequestAsync("Radiation source registration", UniqueName("Id Search Org"), RequestPriority.High);
+
+        var result = await GetPageAsync($"?search={request.Id}");
+
+        Assert.Contains(result.Items, item => item.Id == request.Id);
+    }
+
+    [Fact]
     public async Task GetRequests_WithPaging_ReturnsRequestedPageAndTotals()
     {
         var organization = UniqueName("Paged Org");

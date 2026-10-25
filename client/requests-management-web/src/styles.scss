@@ -10,6 +10,21 @@ html {
       density: -2,
     )
   );
+
+  --app-status-new: #1565c0;
+  --app-status-new-surface: #e3f2fd;
+  --app-status-in-progress: #a15c00;
+  --app-status-in-progress-surface: #fff3e0;
+  --app-status-waiting: #6a1b9a;
+  --app-status-waiting-surface: #f3e5f5;
+  --app-status-completed: #2e7d32;
+  --app-status-completed-surface: #e8f5e9;
+  --app-priority-low: #546e7a;
+  --app-priority-low-surface: #eceff1;
+  --app-priority-medium: #a15c00;
+  --app-priority-medium-surface: #fff3e0;
+  --app-priority-high: #c62828;
+  --app-priority-high-surface: #ffebee;
 }
 
 html,
@@ -20,6 +35,63 @@ body {
 body {
   margin: 0;
   font-family: Roboto, 'Helvetica Neue', sans-serif;
-  background: var(--mat-sys-surface-container-lowest);
+  background: var(--mat-sys-surface-container-low);
   color: var(--mat-sys-on-surface);
+}
+
+[data-status='New'] {
+  --app-accent: var(--app-status-new);
+  --app-accent-surface: var(--app-status-new-surface);
+}
+
+[data-status='InProgress'] {
+  --app-accent: var(--app-status-in-progress);
+  --app-accent-surface: var(--app-status-in-progress-surface);
+}
+
+[data-status='Waiting'] {
+  --app-accent: var(--app-status-waiting);
+  --app-accent-surface: var(--app-status-waiting-surface);
+}
+
+[data-status='Completed'] {
+  --app-accent: var(--app-status-completed);
+  --app-accent-surface: var(--app-status-completed-surface);
+}
+
+[data-priority='Low'] {
+  --app-accent: var(--app-priority-low);
+  --app-accent-surface: var(--app-priority-low-surface);
+}
+
+[data-priority='Medium'] {
+  --app-accent: var(--app-priority-medium);
+  --app-accent-surface: var(--app-priority-medium-surface);
+}
+
+[data-priority='High'] {
+  --app-accent: var(--app-priority-high);
+  --app-accent-surface: var(--app-priority-high-surface);
+}
+
+.app-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  color: var(--app-accent, var(--mat-sys-on-surface-variant));
+  background: var(--app-accent-surface, var(--mat-sys-surface-container-high));
+
+  &::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
 }

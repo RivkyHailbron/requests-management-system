@@ -16,7 +16,11 @@
         <ol class="timeline">
           @for (entry of current.entries; track entry.id) {
             <li>
-              <span class="timeline__change">{{ entry.previousStatus }} → {{ entry.newStatus }}</span>
+              <span class="timeline__change">
+                <span class="app-badge" [attr.data-status]="entry.previousStatus">{{ entry.previousStatus | statusLabel }}</span>
+                →
+                <span class="app-badge" [attr.data-status]="entry.newStatus">{{ entry.newStatus | statusLabel }}</span>
+              </span>
               <span class="timeline__meta">{{ entry.changedAt | date: 'medium' }} · {{ entry.changedBy }}</span>
             </li>
           }

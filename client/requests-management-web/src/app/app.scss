@@ -1,7 +1,25 @@
 .toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   gap: 12px;
+  height: 64px;
+  background: var(--mat-sys-surface);
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+
+  &__logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    color: var(--mat-sys-on-primary);
+    background: var(--mat-sys-primary);
+  }
 
   &__title {
+    font-size: 1.1rem;
     font-weight: 500;
   }
 

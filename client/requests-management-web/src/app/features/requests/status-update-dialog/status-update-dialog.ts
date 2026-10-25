@@ -7,6 +7,7 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
+import { StatusLabelPipe } from '../status-label.pipe';
 import { toErrorMessage, toProblemDetails } from '../../../core/http/problem-details';
 import { RequestItem, RequestStatus } from '../models/request.models';
 import { RequestsStore } from '../state/requests-store';
@@ -15,7 +16,15 @@ const currentRequestExtension = 'currentRequest';
 
 @Component({
   selector: 'app-status-update-dialog',
-  imports: [ReactiveFormsModule, MatButtonModule, MatDialogModule, MatFormFieldModule, MatProgressBarModule, MatSelectModule],
+  imports: [
+    ReactiveFormsModule,
+    MatButtonModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatProgressBarModule,
+    MatSelectModule,
+    StatusLabelPipe,
+  ],
   templateUrl: './status-update-dialog.html',
   styleUrl: './status-update-dialog.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

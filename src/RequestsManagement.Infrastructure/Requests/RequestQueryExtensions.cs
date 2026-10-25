@@ -1,3 +1,4 @@
+using System.Globalization;
 using RequestsManagement.Application.Common;
 using RequestsManagement.Application.Requests.Dtos;
 using RequestsManagement.Application.Requests.Queries;
@@ -44,7 +45,10 @@ internal static class RequestQueryExtensions
         if (!string.IsNullOrWhiteSpace(parameters.Search))
         {
             var search = parameters.Search.Trim();
-            query = query.Where(request => request.Title.Contains(search) || request.OrganizationName.Contains(search));
+            query = int.TryParse(search, NumberStyles.None, CultureInfo.InvariantCulture, out var requestId)
+                ? query.Where(request =>
+                    request.Id == requestId || request.Title.Contains(search) || request.OrganizationName.Contains(search))
+                : query.Where(request => request.Title.Contains(search) || request.OrganizationName.Contains(search));
         }
 
         return query;

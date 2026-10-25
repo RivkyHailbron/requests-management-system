@@ -91,7 +91,7 @@ docker compose up --build
 | 7 | צד לקוח (Angular) | הושלם |
 | 8 | מדידת ביצועים | הושלם |
 | 9 | היערכות להרצה ותיעוד סופי | הושלם |
-| 10 | סינון לפי ערכים קיימים (הצעות לארגון ולמטפל) | הושלם |
+| 10 | שיפורי חיפוש ותצוגה: הצעות לארגון ולמטפל, חיפוש לפי מספר פנייה ועיצוב | הושלם |
 
 ---
 
@@ -174,7 +174,7 @@ stateDiagram-v2
 | `status`, `priority` | סינון. אפשר להעביר כמה ערכים |
 | `organizationName`, `assignedTo` | סינון לפי ערך מדויק |
 | `createdFrom`, `createdTo` | טווח תאריכי יצירה |
-| `search` | חיפוש טקסטואלי ב-`Title` וב-`OrganizationName` |
+| `search` | חיפוש טקסטואלי ב-`Title` וב-`OrganizationName`. ערך מספרי מתאים גם למספר הפנייה (`Id`) |
 | `sortBy`, `sortDirection` | מיון לפי `CreatedAt`, `UpdatedAt`, `Priority`, `Status`, `Title` או `OrganizationName`, בכיוון `Asc` או `Desc` |
 
 **זיהוי המשתמש המבצע:** לא נדרש מנגנון הזדהות, ולכן בפעולות עדכון המשתמש מזוהה באמצעות Header חובה ‏`X-User-Id`. ה-Header נקרא רק בשכבת ה-Api ומועבר לשירות כפרמטר, כך שמעבר ל-Claims של JWT ישנה רק את ה-Controller.
@@ -311,14 +311,18 @@ stateDiagram-v2
 | T9.1 | Docker | Dockerfile ל-API ול-Web ו-`docker-compose` מלא: DB, ‏Migration, ‏Seed, ‏API ו-Web | הרצה בפקודה אחת | F1–F7 | 25 דק' |
 | T9.2 | תיעוד סופי | הוראות הרצה, גרסאות, מבנה, Concurrency ו-Bulk, ‏Cache, החלטות וחלופות, מגבלה ושיפור, ושימוש ב-AI | README שלם | הכול | 35 דק' |
 
-#### F10 - סינון לפי ערכים קיימים
-> **US10:** כמשתמש/ת, אני רוצה לבחור ארגון ומטפל מתוך הערכים שקיימים במערכת, במקום להקליד שם מדויק.
+#### F10 - שיפורי חיפוש ותצוגה
+> **US10.1:** כמשתמש/ת, אני רוצה לבחור ארגון ומטפל מתוך הערכים שקיימים במערכת, במקום להקליד שם מדויק.
+>
+> **US10.2:** כמשתמש/ת, אני רוצה למצוא פנייה לפי המספר שלה, גם אחרי ששיניתי את הסטטוס שלה והיא יצאה מהסינון הנוכחי.
 
 | ID | משימה | מה נדרש | תוצר | תלוי ב- | הערכה |
 |---|---|---|---|---|---|
 | T10.1 | Endpoints להצעות | ערכים ייחודיים של ארגון ומטפל, עם חיפוש לפי תחילית, הגבלת כמות ו-Validation | `lookups/organizations`, `lookups/assignees` | T3.2 | 20 דק' |
 | T10.2 | Autocomplete בסינון | רכיב משותף (`ControlValueAccessor`) שטוען הצעות עם Debounce ו-`switchMap` | שדות ארגון ומטפל | T10.1, T7.3 | 30 דק' |
 | T10.3 | מדידה, בדיקות ותיעוד | מדידת זמני השאילתה על 100K רשומות, בדיקות Integration ועדכון README | בדיקות ו-README | T10.1 | 20 דק' |
+| T10.4 | חיפוש לפי מספר פנייה | ערך מספרי ב-`search` מתאים גם ל-`Id`, ובדיקת Integration | חיפוש לפי `#` | T3.2 | 15 דק' |
+| T10.5 | שיפור תצוגה | צבע קבוע לכל סטטוס ועדיפות, כרטיסי סיכום עם אחוזים, כרטיס סינון וטבלה קריאה יותר | ממשק מעוצב | T7.3, T7.6 | 40 דק' |
 
 ### סדר ביצוע ותלויות
 
@@ -339,7 +343,7 @@ flowchart LR
     F6 --> F9[F9 הרצה ותיעוד]
     F7 --> F9
     F8 --> F9
-    F3 --> F10[F10 סינון לפי ערכים קיימים]
+    F3 --> F10[F10 שיפורי חיפוש ותצוגה]
     F7 --> F10
     F10 --> F9
 ```
@@ -348,7 +352,7 @@ flowchart LR
 
 F8 (ביצועים) יכול להתבצע במקביל ל-F4 עד F7, כי הוא תלוי רק במודל הנתונים ובשאילתות השליפה. F6 (Cache) מגיע אחרי F5, כי ה-Invalidation צריך לכסות גם את העדכון המרובה.
 
-F10 נוסף אחרי שהמערכת הושלמה, כשיפור לסינון לפי `OrganizationName` ו-`AssignedTo` (F3 ו-F7). בהרצה ראיתי שהסינון דורש לנחש שם מדויק.
+F10 נוסף אחרי שהמערכת הושלמה, כשיפור לחיפוש ולסינון (F3 ו-F7) בעקבות עבודה על המערכת: הסינון לפי ארגון ומטפל דרש לנחש שם מדויק, ופנייה שהסטטוס שלה שונה נעלמה מהרשימה המסוננת, בלי דרך לאתר אותה לפי המספר שלה.
 
 ### סיכום הערכת מאמץ
 
@@ -364,8 +368,8 @@ F10 נוסף אחרי שהמערכת הושלמה, כשיפור לסינון ל�
 | F7 - צד לקוח | 3 ש' |
 | F8 - ביצועים | 1 ש' |
 | F9 - היערכות להרצה ותיעוד | 1 ש' |
-| F10 - סינון לפי ערכים קיימים | 1 ש' 10 דק' |
-| **סה"כ** | **13 ש' 55 דק'** |
+| F10 - שיפורי חיפוש ותצוגה | 2 ש' 5 דק' |
+| **סה"כ** | **14 ש' 50 דק'** |
 
 ### מיפוי דרישות המבדק למשימות
 
@@ -375,7 +379,7 @@ F10 נוסף אחרי שהמערכת הושלמה, כשיפור לסינון ל�
 | מבנה פנייה | 100,000 רשומות לפחות ויצירה חוזרת | T2.3 |
 | 1 | Pagination בצד השרת | T3.2, T3.3 |
 | 1 | סינון משולב: Status, Priority, OrganizationName, AssignedTo וטווח תאריכים | T3.1, T3.2, T10.1, T10.2 |
-| 1 | חיפוש טקסטואלי ב-Title וב-OrganizationName | T3.2 |
+| 1 | חיפוש טקסטואלי ב-Title וב-OrganizationName | T3.2, T10.4 |
 | 1 | מיון לפי שלושה שדות לפחות, Asc ו-Desc | T3.1, T3.2 |
 | 1 | שני Aggregations לפחות | T3.4 |
 | 1 | הגבלת Page Size ו-Validation | T3.1 |
@@ -585,7 +589,7 @@ GET /api/requests?status=InProgress&status=Waiting&priority=High&search=permit&s
 | טווח תאריכים | `IX_Requests_CreatedAt` | Range Seek |
 | הצעות לארגון או למטפל (Lookups) | `IX_Requests_OrganizationName_CreatedAt`, `IX_Requests_AssignedTo_CreatedAt` | ‏Range Seek לתחילית, והערכים כבר ממוינים באינדקס. לכן `DISTINCT` ו-`TOP` לא דורשים Sort, והשאילתה עוצרת אחרי `limit` ערכים |
 | התפלגות לפי סטטוס או עדיפות | `IX_Requests_Status_CreatedAt`, `IX_Requests_Priority_CreatedAt` | ‏`GROUP BY` על אינדקס צר במקום על הטבלה המלאה |
-| חיפוש טקסטואלי (`search`) | אין אינדקס מתאים | ‏`LIKE '%term%'` לא יכול לבצע Seek. מתבצעת סריקה, בדרך כלל יחד עם פילטר נוסף שמצמצם אותה. זהו ה-Bottleneck העיקרי. המדידה והצעת השיפור (Full-Text Search) מפורטות בפרק [ביצועים](#ביצועים) |
+| חיפוש טקסטואלי (`search`) | אין אינדקס מתאים | ‏`LIKE '%term%'` לא יכול לבצע Seek. כשהערך מספרי נוסף לתנאי גם `Id = @id`, אבל בגלל ה-`OR` עם ה-`LIKE` השאילתה עדיין סורקת. מתבצעת סריקה, בדרך כלל יחד עם פילטר נוסף שמצמצם אותה. זהו ה-Bottleneck העיקרי. המדידה והצעת השיפור (Full-Text Search) מפורטות בפרק [ביצועים](#ביצועים) |
 
 ### Validation, שגיאות ו-Logging
 
@@ -750,7 +754,8 @@ client/requests-management-web/src/app/
 │   ├── state-message/                  רכיב אחיד למצבי Loading, Empty ו-Error
 │   └── lookup-autocomplete/            שדה בחירה עם הצעות מהשרת (ControlValueAccessor)
 └── features/requests/
-    ├── models/                         טיפוסים תואמים לחוזה ה-API
+    ├── models/                         טיפוסים תואמים לחוזה ה-API, ושמות תצוגה לסטטוסים
+    ├── status-label.pipe.ts            הצגת סטטוס בשם קריא, למשל "In progress"
     ├── data/requests-api.ts            שכבת HTTP בלבד, ללא State
     ├── state/requests-store.ts         ניהול State וזרימות RxJS
     ├── requests-page/                  רכיב Container: מחבר בין ה-Store לרכיבי התצוגה
@@ -761,6 +766,13 @@ client/requests-management-web/src/app/
     ├── status-update-dialog/           עדכון סטטוס וטיפול ב-409
     └── request-history-dialog/         היסטוריית שינויים
 ```
+
+### עיצוב
+
+- **צבע קבוע לכל סטטוס ועדיפות:** הצבעים מוגדרים פעם אחת כמשתני CSS ב-`styles.scss`, ונבחרים לפי `data-status` או `data-priority`. כך אותו סטטוס נראה זהה בטבלה, בסיכום, בדיאלוג העדכון ובהיסטוריה.
+- **סיכום:** כרטיס לסך הכול, וכרטיסים להתפלגות לפי סטטוס ולפי עדיפות, עם מספר, אחוז ופס יחסי.
+- **מבנה המסך:** כותרת, סיכום, כרטיס סינון וכרטיס תוצאות עם מספר הפניות שנמצאו. הסינון מסודר ב-Grid שמתאים את עצמו לרוחב המסך.
+- **טבלה:** כותרת קבועה בגלילה, הדגשה של שורה במעבר עכבר ושל שורות שנבחרו, ותאריכים ומספרים ביישור אחיד.
 
 ### הפרדת אחריות
 
@@ -910,6 +922,7 @@ Seek ישיר לסטטוס, קריאה של 60 שורות בלבד לפי סדר
 |---|---|
 | `GetRequests_WithCombinedFilters_ReturnsOnlyMatchingRequestsInRequestedOrder` | סינון משולב (ארגון, שני סטטוסים ומטפל) עם מיון לפי עדיפות בסדר יורד |
 | `GetRequests_WithSearch_MatchesTitleAndOrganizationName` | חיפוש שמוצא התאמה גם בכותרת וגם בשם הארגון |
+| `GetRequests_WithNumericSearch_MatchesRequestId` | חיפוש מספרי מוצא את הפנייה לפי המספר שלה |
 | `GetRequests_WithPaging_ReturnsRequestedPageAndTotals` | עמוד אחרון חלקי, ו-`totalCount` ו-`totalPages` נכונים |
 | `GetRequests_WithInvalidParameters_ReturnsValidationProblem` | ‏400 עם שגיאה לכל פרמטר לא תקין |
 | `GetRequest_WhenRequestDoesNotExist_ReturnsNotFound` | ‏404 לפנייה שאינה קיימת |

@@ -4,8 +4,12 @@
   align-items: center;
   gap: 12px;
   padding: 8px 16px;
-  border-radius: 8px;
+  border-radius: 12px;
   background: var(--mat-sys-secondary-container);
+
+  &__count {
+    font-weight: 500;
+  }
 
   &__limit {
     color: var(--mat-sys-error);

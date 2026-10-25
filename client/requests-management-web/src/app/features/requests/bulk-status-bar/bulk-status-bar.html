@@ -1,11 +1,11 @@
 <div class="bulk-bar" role="region" aria-label="Bulk status update">
-  <span>{{ selectedCount() }} selected</span>
+  <span class="bulk-bar__count">{{ selectedCount() }} selected</span>
 
   <mat-form-field appearance="outline" subscriptSizing="dynamic">
     <mat-label>Move to status</mat-label>
     <mat-select [formControl]="statusControl">
       @for (status of statuses; track status) {
-        <mat-option [value]="status">{{ status }}</mat-option>
+        <mat-option [value]="status">{{ status | statusLabel }}</mat-option>
       }
     </mat-select>
   </mat-form-field>

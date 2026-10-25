@@ -1,4 +1,9 @@
 <section class="page">
+  <header class="page__header">
+    <h1 class="page__title">Requests</h1>
+    <p class="page__subtitle">Search, filter and update requests received from organizations and employers.</p>
+  </header>
+
   @if (store.summary(); as summary) {
     <app-requests-summary [summary]="summary" />
   } @else if (store.summaryError(); as error) {
@@ -13,6 +18,15 @@
       (organizationSearch)="store.searchOrganizations($event)"
       (assigneeSearch)="store.searchAssignees($event)"
     />
+  </mat-card>
+
+  <mat-card appearance="outlined" class="page__card page__card--results">
+    <div class="page__results-header">
+      <h2 class="page__section-title">Results</h2>
+      @if (store.page(); as page) {
+        <span class="page__count">{{ page.totalCount | number }} requests</span>
+      }
+    </div>
 
     @if (selected().length > 0) {
       <app-bulk-status-bar
@@ -24,9 +38,11 @@
       />
     }
 
-    @if (store.loading()) {
-      <mat-progress-bar mode="indeterminate" />
-    }
+    <div class="page__progress">
+      @if (store.loading()) {
+        <mat-progress-bar mode="indeterminate" />
+      }
+    </div>
 
     @if (store.error(); as error) {
       <app-state-message kind="error" [message]="error" (retry)="store.reload()" />

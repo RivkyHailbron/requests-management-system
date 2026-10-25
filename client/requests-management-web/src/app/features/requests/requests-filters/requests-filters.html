@@ -1,53 +1,59 @@
 <form class="filters" [formGroup]="form">
-  <mat-form-field class="filters__search" appearance="outline" subscriptSizing="dynamic">
-    <mat-label>Search title or organization</mat-label>
-    <mat-icon matPrefix>search</mat-icon>
-    <input matInput formControlName="search" autocomplete="off" />
-  </mat-form-field>
+  <div class="filters__header">
+    <h2 class="filters__title"><mat-icon>filter_list</mat-icon> Filters</h2>
+    <button mat-button type="button" (click)="clear()">
+      <mat-icon>filter_list_off</mat-icon>
+      Clear filters
+    </button>
+  </div>
 
-  <mat-form-field appearance="outline" subscriptSizing="dynamic">
-    <mat-label>Status</mat-label>
-    <mat-select formControlName="statuses" multiple>
-      @for (status of statuses; track status) {
-        <mat-option [value]="status">{{ status }}</mat-option>
-      }
-    </mat-select>
-  </mat-form-field>
+  <div class="filters__grid">
+    <mat-form-field class="filters__search" appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Search by #, title or organization</mat-label>
+      <mat-icon matPrefix>search</mat-icon>
+      <input matInput formControlName="search" autocomplete="off" />
+    </mat-form-field>
 
-  <mat-form-field appearance="outline" subscriptSizing="dynamic">
-    <mat-label>Priority</mat-label>
-    <mat-select formControlName="priorities" multiple>
-      @for (priority of priorities; track priority) {
-        <mat-option [value]="priority">{{ priority }}</mat-option>
-      }
-    </mat-select>
-  </mat-form-field>
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Status</mat-label>
+      <mat-select formControlName="statuses" multiple>
+        @for (status of statuses; track status) {
+          <mat-option [value]="status">{{ status | statusLabel }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
 
-  <app-lookup-autocomplete
-    class="filters__lookup"
-    formControlName="organizationName"
-    label="Organization"
-    [options]="organizationOptions()"
-    (searchChange)="organizationSearch.emit($event)"
-  />
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Priority</mat-label>
+      <mat-select formControlName="priorities" multiple>
+        @for (priority of priorities; track priority) {
+          <mat-option [value]="priority">{{ priority }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
 
-  <app-lookup-autocomplete
-    class="filters__lookup"
-    formControlName="assignedTo"
-    label="Assigned to"
-    [options]="assigneeOptions()"
-    (searchChange)="assigneeSearch.emit($event)"
-  />
+    <app-lookup-autocomplete
+      formControlName="organizationName"
+      label="Organization"
+      [options]="organizationOptions()"
+      (searchChange)="organizationSearch.emit($event)"
+    />
 
-  <mat-form-field appearance="outline" subscriptSizing="dynamic">
-    <mat-label>Created from</mat-label>
-    <input matInput type="date" formControlName="createdFrom" />
-  </mat-form-field>
+    <app-lookup-autocomplete
+      formControlName="assignedTo"
+      label="Assigned to"
+      [options]="assigneeOptions()"
+      (searchChange)="assigneeSearch.emit($event)"
+    />
 
-  <mat-form-field appearance="outline" subscriptSizing="dynamic">
-    <mat-label>Created to</mat-label>
-    <input matInput type="date" formControlName="createdTo" />
-  </mat-form-field>
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Created from</mat-label>
+      <input matInput type="date" formControlName="createdFrom" />
+    </mat-form-field>
 
-  <button mat-button type="button" (click)="clear()">Clear filters</button>
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Created to</mat-label>
+      <input matInput type="date" formControlName="createdTo" />
+    </mat-form-field>
+  </div>
 </form>

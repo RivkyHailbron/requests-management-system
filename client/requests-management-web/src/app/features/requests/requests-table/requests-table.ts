@@ -7,6 +7,7 @@ import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RequestItem, RequestSortField, SortDirection, requestSortFields } from '../models/request.models';
+import { StatusLabelPipe } from '../status-label.pipe';
 
 export interface SortChange {
   readonly sortBy: RequestSortField;
@@ -15,7 +16,16 @@ export interface SortChange {
 
 @Component({
   selector: 'app-requests-table',
-  imports: [DatePipe, MatButtonModule, MatCheckboxModule, MatIconModule, MatSortModule, MatTableModule, MatTooltipModule],
+  imports: [
+    DatePipe,
+    MatButtonModule,
+    MatCheckboxModule,
+    MatIconModule,
+    MatSortModule,
+    MatTableModule,
+    MatTooltipModule,
+    StatusLabelPipe,
+  ],
   templateUrl: './requests-table.html',
   styleUrl: './requests-table.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

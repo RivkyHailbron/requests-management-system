@@ -28,12 +28,12 @@
 
     <ng-container matColumnDef="Id">
       <th mat-header-cell *matHeaderCellDef>#</th>
-      <td mat-cell *matCellDef="let request">{{ request.id }}</td>
+      <td mat-cell *matCellDef="let request" class="id">{{ request.id }}</td>
     </ng-container>
 
     <ng-container matColumnDef="Title">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>Title</th>
-      <td mat-cell *matCellDef="let request">{{ request.title }}</td>
+      <td mat-cell *matCellDef="let request" class="title">{{ request.title }}</td>
     </ng-container>
 
     <ng-container matColumnDef="OrganizationName">
@@ -44,30 +44,30 @@
     <ng-container matColumnDef="Status">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
       <td mat-cell *matCellDef="let request">
-        <span class="badge" [attr.data-status]="request.status">{{ request.status }}</span>
+        <span class="app-badge" [attr.data-status]="request.status">{{ request.status | statusLabel }}</span>
       </td>
     </ng-container>
 
     <ng-container matColumnDef="Priority">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>Priority</th>
       <td mat-cell *matCellDef="let request">
-        <span class="badge" [attr.data-priority]="request.priority">{{ request.priority }}</span>
+        <span class="app-badge" [attr.data-priority]="request.priority">{{ request.priority }}</span>
       </td>
     </ng-container>
 
     <ng-container matColumnDef="AssignedTo">
       <th mat-header-cell *matHeaderCellDef>Assigned to</th>
-      <td mat-cell *matCellDef="let request">{{ request.assignedTo ?? '—' }}</td>
+      <td mat-cell *matCellDef="let request" [class.muted]="!request.assignedTo">{{ request.assignedTo ?? '—' }}</td>
     </ng-container>
 
     <ng-container matColumnDef="CreatedAt">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>Created</th>
-      <td mat-cell *matCellDef="let request">{{ request.createdAt | date: 'short' }}</td>
+      <td mat-cell *matCellDef="let request" class="date">{{ request.createdAt | date: 'short' }}</td>
     </ng-container>
 
     <ng-container matColumnDef="UpdatedAt">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>Updated</th>
-      <td mat-cell *matCellDef="let request">{{ request.updatedAt | date: 'short' }}</td>
+      <td mat-cell *matCellDef="let request" class="date">{{ request.updatedAt | date: 'short' }}</td>
     </ng-container>
 
     <ng-container matColumnDef="actions">
@@ -83,6 +83,6 @@
     </ng-container>
 
     <tr mat-header-row *matHeaderRowDef="columns; sticky: true"></tr>
-    <tr mat-row *matRowDef="let row; columns: columns"></tr>
+    <tr mat-row *matRowDef="let row; columns: columns" [class.selected]="selectedIds().has(row.id)"></tr>
   </table>
 </div>

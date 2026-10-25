@@ -6,6 +6,7 @@ import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { catchError, map, of, startWith } from 'rxjs';
 import { toErrorMessage } from '../../../core/http/problem-details';
 import { StateMessage } from '../../../shared/state-message/state-message';
+import { StatusLabelPipe } from '../status-label.pipe';
 import { RequestItem, StatusHistoryEntry } from '../models/request.models';
 import { RequestsStore } from '../state/requests-store';
 
@@ -16,7 +17,7 @@ type HistoryState =
 
 @Component({
   selector: 'app-request-history-dialog',
-  imports: [DatePipe, MatButtonModule, MatDialogModule, StateMessage],
+  imports: [DatePipe, MatButtonModule, MatDialogModule, StateMessage, StatusLabelPipe],
   templateUrl: './request-history-dialog.html',
   styleUrl: './request-history-dialog.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

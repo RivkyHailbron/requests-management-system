@@ -6,7 +6,10 @@
   }
 
   <p class="request-title">{{ request().title }}</p>
-  <p>Current status: <strong>{{ request().status }}</strong></p>
+  <p class="current-status">
+    Current status:
+    <span class="app-badge" [attr.data-status]="request().status">{{ request().status | statusLabel }}</span>
+  </p>
 
   @if (conflictMessage(); as message) {
     <p class="message message--warning" role="alert">{{ message }}</p>
@@ -21,7 +24,7 @@
       <mat-label>New status</mat-label>
       <mat-select [formControl]="statusControl">
         @for (status of allowedStatuses(); track status) {
-          <mat-option [value]="status">{{ status }}</mat-option>
+          <mat-option [value]="status">{{ status | statusLabel }}</mat-option>
         }
       </mat-select>
     </mat-form-field>

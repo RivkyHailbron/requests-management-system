@@ -1,18 +1,38 @@
 .filters {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  flex-direction: column;
   gap: 12px;
 
-  mat-form-field {
-    width: 180px;
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
 
-  &__lookup {
-    width: 240px;
+  &__title {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 500;
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+
+    mat-form-field {
+      width: 100%;
+    }
   }
 
   &__search {
-    flex: 1 1 280px;
+    grid-column: span 2;
+
+    @media (max-width: 600px) {
+      grid-column: auto;
+    }
   }
 }
