@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using RequestsManagement.Application.Requests;
 using RequestsManagement.Domain.Requests;
 using RequestsManagement.Infrastructure.Persistence;
 using Testcontainers.MsSql;
@@ -43,6 +44,7 @@ public sealed class RequestsApiFactory : WebApplicationFactory<Program>, IAsyncL
         var dbContext = scope.ServiceProvider.GetRequiredService<RequestsDbContext>();
         dbContext.Requests.Add(request);
         await dbContext.SaveChangesAsync();
+        await scope.ServiceProvider.GetRequiredService<IRequestCacheInvalidator>().InvalidateAsync(CancellationToken.None);
         return request;
     }
 

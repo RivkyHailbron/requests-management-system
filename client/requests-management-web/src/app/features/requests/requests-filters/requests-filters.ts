@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -6,6 +6,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { LookupAutocomplete } from '../../../shared/lookup-autocomplete/lookup-autocomplete';
 import {
   RequestFilters,
   RequestPriority,
@@ -17,7 +18,15 @@ import {
 
 @Component({
   selector: 'app-requests-filters',
-  imports: [ReactiveFormsModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, MatSelectModule],
+  imports: [
+    ReactiveFormsModule,
+    LookupAutocomplete,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    MatSelectModule,
+  ],
   templateUrl: './requests-filters.html',
   styleUrl: './requests-filters.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -36,7 +45,12 @@ export class RequestsFilters {
     createdTo: emptyFilters.createdTo,
   });
 
+  readonly organizationOptions = input.required<readonly string[]>();
+  readonly assigneeOptions = input.required<readonly string[]>();
+
   readonly filtersChange = output<RequestFilters>();
+  readonly organizationSearch = output<string>();
+  readonly assigneeSearch = output<string>();
 
   constructor() {
     this.form.valueChanges

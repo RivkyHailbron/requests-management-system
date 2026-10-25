@@ -91,6 +91,7 @@ docker compose up --build
 | 7 | צד לקוח (Angular) | הושלם |
 | 8 | מדידת ביצועים | הושלם |
 | 9 | היערכות להרצה ותיעוד סופי | הושלם |
+| 10 | סינון לפי ערכים קיימים (הצעות לארגון ולמטפל) | הושלם |
 
 ---
 
@@ -162,6 +163,8 @@ stateDiagram-v2
 | `PATCH` | `/api/requests/status` | עדכון סטטוס מרובה, עד 100 פניות |
 | `GET` | `/api/requests/{id}/history` | היסטוריית שינויי הסטטוס של פנייה |
 | `GET` | `/api/requests/status-transitions` | מפת מעברי הסטטוס המותרים, לשימוש צד הלקוח |
+| `GET` | `/api/requests/lookups/organizations` | שמות ארגונים שקיימים בפניות, להצעות בשדה הסינון. פרמטרים: `search`, `limit` |
+| `GET` | `/api/requests/lookups/assignees` | מטפלים שקיימים בפניות, להצעות בשדה הסינון. פרמטרים: `search`, `limit` |
 
 **פרמטרים לשליפה (`GET /api/requests`):**
 
@@ -308,6 +311,15 @@ stateDiagram-v2
 | T9.1 | Docker | Dockerfile ל-API ול-Web ו-`docker-compose` מלא: DB, ‏Migration, ‏Seed, ‏API ו-Web | הרצה בפקודה אחת | F1–F7 | 25 דק' |
 | T9.2 | תיעוד סופי | הוראות הרצה, גרסאות, מבנה, Concurrency ו-Bulk, ‏Cache, החלטות וחלופות, מגבלה ושיפור, ושימוש ב-AI | README שלם | הכול | 35 דק' |
 
+#### F10 - סינון לפי ערכים קיימים
+> **US10:** כמשתמש/ת, אני רוצה לבחור ארגון ומטפל מתוך הערכים שקיימים במערכת, במקום להקליד שם מדויק.
+
+| ID | משימה | מה נדרש | תוצר | תלוי ב- | הערכה |
+|---|---|---|---|---|---|
+| T10.1 | Endpoints להצעות | ערכים ייחודיים של ארגון ומטפל, עם חיפוש לפי תחילית, הגבלת כמות ו-Validation | `lookups/organizations`, `lookups/assignees` | T3.2 | 20 דק' |
+| T10.2 | Autocomplete בסינון | רכיב משותף (`ControlValueAccessor`) שטוען הצעות עם Debounce ו-`switchMap` | שדות ארגון ומטפל | T10.1, T7.3 | 30 דק' |
+| T10.3 | מדידה, בדיקות ותיעוד | מדידת זמני השאילתה על 100K רשומות, בדיקות Integration ועדכון README | בדיקות ו-README | T10.1 | 20 דק' |
+
 ### סדר ביצוע ותלויות
 
 ```mermaid
@@ -327,11 +339,16 @@ flowchart LR
     F6 --> F9[F9 הרצה ותיעוד]
     F7 --> F9
     F8 --> F9
+    F3 --> F10[F10 סינון לפי ערכים קיימים]
+    F7 --> F10
+    F10 --> F9
 ```
 
 **הנתיב הקריטי:** F0 ← F1 ← F2 ← F3 ← F4 ← F5 ← F7 ← F9.
 
 F8 (ביצועים) יכול להתבצע במקביל ל-F4 עד F7, כי הוא תלוי רק במודל הנתונים ובשאילתות השליפה. F6 (Cache) מגיע אחרי F5, כי ה-Invalidation צריך לכסות גם את העדכון המרובה.
+
+F10 נוסף אחרי שהמערכת הושלמה, כשיפור לסינון לפי `OrganizationName` ו-`AssignedTo` (F3 ו-F7). בהרצה ראיתי שהסינון דורש לנחש שם מדויק.
 
 ### סיכום הערכת מאמץ
 
@@ -347,7 +364,8 @@ F8 (ביצועים) יכול להתבצע במקביל ל-F4 עד F7, כי הו�
 | F7 - צד לקוח | 3 ש' |
 | F8 - ביצועים | 1 ש' |
 | F9 - היערכות להרצה ותיעוד | 1 ש' |
-| **סה"כ** | **12 ש' 45 דק'** |
+| F10 - סינון לפי ערכים קיימים | 1 ש' 10 דק' |
+| **סה"כ** | **13 ש' 55 דק'** |
 
 ### מיפוי דרישות המבדק למשימות
 
@@ -356,7 +374,7 @@ F8 (ביצועים) יכול להתבצע במקביל ל-F4 עד F7, כי הו�
 | מבנה פנייה | שדות הפנייה ו-RowVersion | T2.1, T2.2 |
 | מבנה פנייה | 100,000 רשומות לפחות ויצירה חוזרת | T2.3 |
 | 1 | Pagination בצד השרת | T3.2, T3.3 |
-| 1 | סינון משולב: Status, Priority, OrganizationName, AssignedTo וטווח תאריכים | T3.1, T3.2 |
+| 1 | סינון משולב: Status, Priority, OrganizationName, AssignedTo וטווח תאריכים | T3.1, T3.2, T10.1, T10.2 |
 | 1 | חיפוש טקסטואלי ב-Title וב-OrganizationName | T3.2 |
 | 1 | מיון לפי שלושה שדות לפחות, Asc ו-Desc | T3.1, T3.2 |
 | 1 | שני Aggregations לפחות | T3.4 |
@@ -528,6 +546,8 @@ flowchart LR
 | `GET /api/requests` | דפדוף, סינון משולב, חיפוש ומיון. מחזיר `PagedResult<RequestDto>`, שכולל `items`, `page`, `pageSize`, `totalCount` ו-`totalPages` |
 | `GET /api/requests/{id}` | פנייה בודדת, או `404` אם היא לא קיימת |
 | `GET /api/requests/summary` | שני Aggregations: התפלגות לפי סטטוס והתפלגות לפי עדיפות, וסך הכול |
+| `GET /api/requests/lookups/organizations` | עד `limit` שמות ארגונים ייחודיים, ממוינים, שמתחילים ב-`search` |
+| `GET /api/requests/lookups/assignees` | עד `limit` מטפלים ייחודיים, ממוינים, שמתחילים ב-`search`. פניות בלי מטפל לא נכללות |
 
 **דוגמה:**
 
@@ -541,6 +561,7 @@ GET /api/requests?status=InProgress&status=Waiting&priority=High&search=permit&s
 - **זמנים ב-UTC:** כל ערכי `DateTime` נשמרים ומוחזרים ב-UTC, עם סיומת `Z`. ההמרה מוגדרת פעם אחת ב-EF (`UtcDateTimeConverter`).
 - **סינון מרובה ערכים:** `status` ו-`priority` מקבלים כמה ערכים, כי "כל הפניות הפתוחות" (`New`, `InProgress` ו-`Waiting`) הוא תרחיש שכיח.
 - **התאמה מדויקת לארגון ולמטפל:** ‏`organizationName` ו-`assignedTo` הם סינון מדויק, שנתמך באינדקס. חיפוש חופשי בשם הארגון נעשה דרך `search`.
+- **Lookups להצעות סינון:** כדי שהמשתמש לא יצטרך לנחש שם מדויק, הלקוח מציע רק ערכים שקיימים בפועל. השרת מחזיר `DISTINCT` ממוין עם `TOP`, ולא את כל הערכים. ברירת המחדל היא 20 ערכים והמקסימום 50, לפי `Lookup:DefaultLimit` ו-`Lookup:MaxLimit`. כך התשובה קטנה גם כשיש אלפי ארגונים. ההתאמה היא לפי תחילת הערך (`LIKE 'term%'`) ולא לפי הכלה. מדדתי את שתי האפשרויות על 100K רשומות. הכלה (`LIKE '%term%'`) סורקת את כל האינדקס, ולקחה 200 עד 500ms למונח נדיר, איטי מדי להקלדה. התאמת תחילית מבצעת Seek על האינדקס הקיים, ולקחה 2 עד 13ms ב-DB.
 - **מיון יציב:** לכל מיון מתווסף `Id` כמפתח משני, כך שרשומות עם ערך זהה לא "קופצות" בין עמודים.
 - **CancellationToken:** מועבר מה-Controller ועד שאילתות ה-EF. אם הלקוח מתנתק, למשל כשהחיפוש משתנה מהר והבקשה הקודמת מבוטלת, השאילתה ב-DB מבוטלת גם היא.
 
@@ -562,12 +583,14 @@ GET /api/requests?status=InProgress&status=Waiting&priority=High&search=permit&s
 | סינון לפי מטפל ("הפניות שלי") | `IX_Requests_AssignedTo_CreatedAt` | Seek לערך מדויק |
 | סינון לפי ארגון | `IX_Requests_OrganizationName_CreatedAt` | Seek לערך מדויק |
 | טווח תאריכים | `IX_Requests_CreatedAt` | Range Seek |
+| הצעות לארגון או למטפל (Lookups) | `IX_Requests_OrganizationName_CreatedAt`, `IX_Requests_AssignedTo_CreatedAt` | ‏Range Seek לתחילית, והערכים כבר ממוינים באינדקס. לכן `DISTINCT` ו-`TOP` לא דורשים Sort, והשאילתה עוצרת אחרי `limit` ערכים |
 | התפלגות לפי סטטוס או עדיפות | `IX_Requests_Status_CreatedAt`, `IX_Requests_Priority_CreatedAt` | ‏`GROUP BY` על אינדקס צר במקום על הטבלה המלאה |
 | חיפוש טקסטואלי (`search`) | אין אינדקס מתאים | ‏`LIKE '%term%'` לא יכול לבצע Seek. מתבצעת סריקה, בדרך כלל יחד עם פילטר נוסף שמצמצם אותה. זהו ה-Bottleneck העיקרי. המדידה והצעת השיפור (Full-Text Search) מפורטות בפרק [ביצועים](#ביצועים) |
 
 ### Validation, שגיאות ו-Logging
 
 - **Validation:** ‏`RequestQueryParametersValidator` (FluentValidation) בודק שמספר העמוד חיובי, שגודל העמוד בטווח, שאורך מחרוזות הסינון והחיפוש לא חורג מהמגבלה, שטווח התאריכים תקין (`createdTo` לא לפני `createdFrom`) ושה-enums תקינים. ה-Validator מופעל אוטומטית לכל פעולה על ידי `FluentValidationFilter`, כך שה-Controllers לא מכילים קוד Validation. הודעות השגיאה מוחזרות תמיד באנגלית, ולא לפי שפת השרת.
+- **Validation ל-Lookups:** ‏`LookupQueryValidator` בודק ש-`limit` בין 1 ל-`MaxLimit`, ושאורך `search` לא חורג מהמגבלה.
 - **ערך enum לא קיים**, למשל `status=Bogus`, נדחה כבר בשלב ה-Model Binding עם 400.
 - **פורמט שגיאה אחיד:** כל השגיאות מוחזרות כ-ProblemDetails לפי RFC 9457, כולל `traceId` לאיתור בלוגים. ‏`UseStatusCodePages` מבטיח גוף ProblemDetails גם ל-404.
 - **`GlobalExceptionHandler` (`IExceptionHandler`):**
@@ -723,13 +746,15 @@ client/requests-management-web/src/app/
 │   ├── http/user-id.interceptor.ts     הוספת X-User-Id לכל בקשה
 │   ├── http/problem-details.ts         פענוח ProblemDetails להודעת שגיאה קריאה
 │   └── user/current-user.ts            המשתמש הפעיל (Signal)
-├── shared/state-message/               רכיב אחיד למצבי Loading, Empty ו-Error
+├── shared/
+│   ├── state-message/                  רכיב אחיד למצבי Loading, Empty ו-Error
+│   └── lookup-autocomplete/            שדה בחירה עם הצעות מהשרת (ControlValueAccessor)
 └── features/requests/
     ├── models/                         טיפוסים תואמים לחוזה ה-API
     ├── data/requests-api.ts            שכבת HTTP בלבד, ללא State
     ├── state/requests-store.ts         ניהול State וזרימות RxJS
     ├── requests-page/                  רכיב Container: מחבר בין ה-Store לרכיבי התצוגה
-    ├── requests-filters/               טופס סינון וחיפוש
+    ├── requests-filters/               טופס סינון וחיפוש, עם הצעות לארגון ולמטפל
     ├── requests-table/                 טבלה עם מיון ובחירה
     ├── requests-summary/               הצגת ה-Aggregations
     ├── bulk-status-bar/                עדכון מרובה לפניות שנבחרו
@@ -752,6 +777,7 @@ client/requests-management-web/src/app/
 - **ביטול בקשות קודמות:** כל שינוי בשאילתה (סינון, מיון, עמוד או רענון) עובר דרך `switchMap`. כשמגיעה שאילתה חדשה, הבקשה הקודמת מבוטלת, כך שתשובה ישנה שמגיעה באיחור לא יכולה לדרוס תוצאה חדשה. ה-`CancellationToken` בשרת מבטל במקביל את השאילתה ב-DB.
 - **הכול בשרת:** חיפוש, סינון, מיון ודפדוף נשלחים כפרמטרים ל-API. הלקוח מחזיק רק את העמוד הנוכחי.
 - **שגיאות:** `catchError` נמצא בתוך ה-`switchMap`. שגיאה בבקשה אחת מציגה מצב Error, אבל לא סוגרת את הזרימה, והבקשה הבאה תעבוד כרגיל.
+- **הצעות לסינון:** שדות הארגון והמטפל מבוססים על הרכיב `LookupAutocomplete`. בכניסה לשדה ובכל הקלדה הוא מדווח על טקסט החיפוש, וה-Store מפעיל עליו את אותה תבנית: `debounceTime`, `distinctUntilChanged` ו-`switchMap`. הרכיב מוגדר עם `requireSelection`, ולכן הסינון מתעדכן רק כשבוחרים ערך מהרשימה. טקסט חלקי לא שולח שאילתת סינון שלא תחזיר תוצאות. שגיאה בטעינת ההצעות מחזירה רשימה ריקה ולא חוסמת את המסך.
 
 ### מצבי UI
 
@@ -898,10 +924,13 @@ Seek ישיר לסטטוס, קריאה של 60 שורות בלבד לפי סדר
 | `BulkUpdate_WithMixedItems_UpdatesValidItemsAndReportsEachFailure` | ‏Bulk עם פנייה תקינה, גרסה ישנה, מעבר אסור ופנייה שלא קיימת: רק התקינה מתעדכנת ומקבלת היסטוריה, ולכל אחת מהאחרות מוחזרת סיבת הכישלון המדויקת |
 | `BulkUpdate_WithTooManyOrDuplicateItems_ReturnsValidationProblem` | ‏400 ל-101 פריטים, לפנייה כפולה ולרשימה ריקה |
 | `GetSummary_AfterStatusUpdate_ReturnsFreshCountsInsteadOfCachedValue` | הנתונים המסכמים נשמרים ב-Cache, ואחרי עדכון סטטוס מוחזרים מספרים מעודכנים ולא הערך השמור |
+| `GetOrganizationNames_WithSearch_ReturnsDistinctNamesStartingWithSearchInOrder` | הצעות לארגון: ערכים ייחודיים, ממוינים, ורק כאלה שמתחילים בטקסט החיפוש |
+| `GetAssignees_ReturnsOnlyAssignedValuesAndRespectsLimit` | הצעות למטפל: בלי ערכים ריקים, ובהתאם ל-`limit` |
+| `GetLookups_WithInvalidLimit_ReturnsValidationProblem` | ‏400 ל-`limit` מחוץ לטווח המותר |
 
 **החלטות:**
 - **SQL Server אמיתי ולא InMemory Provider:** ‏InMemory לא מתרגם LIKE, לא תומך ב-`rowversion` ולא מתנהג כמו SQL Server בטרנזקציות. בדיקה של Concurrency מולו לא הייתה מוכיחה דבר.
-- **בידוד:** כל בדיקה יוצרת את הנתונים שלה עם שם ארגון ייחודי. כך הבדיקות לא תלויות זו בזו ולא בסדר ההרצה, והן חולקות קונטיינר אחד כדי לחסוך זמן.
+- **בידוד:** כל בדיקה יוצרת את הנתונים שלה עם שם ארגון ייחודי. כך הבדיקות לא תלויות זו בזו ולא בסדר ההרצה, והן חולקות קונטיינר אחד כדי לחסוך זמן. יצירת נתוני בדיקה מבצעת Invalidation ל-Cache, כמו כל כתיבה במערכת, כדי שנתון מסכם ששמרה בדיקה קודמת לא ישפיע על הבדיקה הבאה.
 
 ---
 
@@ -986,6 +1015,7 @@ Seek ישיר לסטטוס, קריאה של 60 שורות בלבד לפי סדר
   - פגיעות אבטחה ידועה בחבילה עקיפה, שקיבעתי לה גרסה מתוקנת.
 - **מדדתי את ה-Execution Plans בעצמי.** כך זיהיתי שהאינדקסים המקוריים לא נוצלו בשאילתה המרכזית, בגלל סדר המיון של `Id`, ותיקנתי אותם. התיקון שיפר את השאילתה פי 13 בקריאות.
 - **פישטתי פתרונות שהיו מסובכים מהנדרש.** לדוגמה, ויתרתי על שכבת `ICurrentUserProvider` לטובת Header מפורש ב-Controller.
+- **שיפרתי את הסינון אחרי שעברתי על המערכת כמשתמשת.** הסינון לפי ארגון ומטפל דרש לנחש שם מדויק, ולכן הוספתי הצעות מתוך הערכים הקיימים. במדידה גיליתי שחיפוש לפי הכלה איטי מדי להקלדה, ועברתי להתאמת תחילית שנתמכת באינדקס. בנוסף גיליתי ותיקנתי תלות בסדר ההרצה בבדיקת ה-Cache.
 - **בדקתי שכל סעיף בדרישות מכוסה**, באמצעות טבלת המיפוי שבפרק תכנון העבודה.
 - **הרצתי את כל הבדיקות האוטומטיות אחרי כל שלב.**
 

@@ -23,15 +23,21 @@
     </mat-select>
   </mat-form-field>
 
-  <mat-form-field appearance="outline" subscriptSizing="dynamic">
-    <mat-label>Organization (exact)</mat-label>
-    <input matInput formControlName="organizationName" autocomplete="off" />
-  </mat-form-field>
+  <app-lookup-autocomplete
+    class="filters__lookup"
+    formControlName="organizationName"
+    label="Organization"
+    [options]="organizationOptions()"
+    (searchChange)="organizationSearch.emit($event)"
+  />
 
-  <mat-form-field appearance="outline" subscriptSizing="dynamic">
-    <mat-label>Assigned to (exact)</mat-label>
-    <input matInput formControlName="assignedTo" autocomplete="off" />
-  </mat-form-field>
+  <app-lookup-autocomplete
+    class="filters__lookup"
+    formControlName="assignedTo"
+    label="Assigned to"
+    [options]="assigneeOptions()"
+    (searchChange)="assigneeSearch.emit($event)"
+  />
 
   <mat-form-field appearance="outline" subscriptSizing="dynamic">
     <mat-label>Created from</mat-label>

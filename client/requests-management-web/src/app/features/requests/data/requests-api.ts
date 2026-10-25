@@ -29,6 +29,14 @@ export class RequestsApi {
     return this.http.get<RequestsSummary>(`${this.baseUrl}/summary`);
   }
 
+  getOrganizationNames(search: string): Observable<readonly string[]> {
+    return this.getLookup('organizations', search);
+  }
+
+  getAssignees(search: string): Observable<readonly string[]> {
+    return this.getLookup('assignees', search);
+  }
+
   getStatusTransitions(): Observable<StatusTransitions> {
     return this.http.get<StatusTransitions>(`${this.baseUrl}/status-transitions`);
   }
@@ -46,6 +54,11 @@ export class RequestsApi {
       status,
       items: requests.map(({ id, version }) => ({ id, version })),
     });
+  }
+
+  private getLookup(lookup: string, search: string): Observable<readonly string[]> {
+    const params = search ? new HttpParams().set('search', search) : undefined;
+    return this.http.get<readonly string[]>(`${this.baseUrl}/lookups/${lookup}`, { params });
   }
 }
 

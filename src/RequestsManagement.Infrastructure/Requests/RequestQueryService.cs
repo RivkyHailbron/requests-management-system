@@ -11,7 +11,8 @@ namespace RequestsManagement.Infrastructure.Requests;
 
 internal sealed class RequestQueryService(
     RequestsDbContext dbContext,
-    IOptions<PaginationOptions> paginationOptions) : IRequestQueryService
+    IOptions<PaginationOptions> paginationOptions,
+    IOptions<LookupOptions> lookupOptions) : IRequestQueryService
 {
     public async Task<PagedResult<RequestDto>> GetPagedAsync(
         RequestQueryParameters parameters,
@@ -81,5 +82,39 @@ internal sealed class RequestQueryService(
                 .Select(status => new StatusCountDto(status, statusCounts.GetValueOrDefault(status)))],
             [.. Enum.GetValues<RequestPriority>()
                 .Select(priority => new PriorityCountDto(priority, priorityCounts.GetValueOrDefault(priority)))]);
+    }
+
+    public Task<IReadOnlyList<string>> GetOrganizationNamesAsync(
+        LookupQuery query,
+        CancellationToken cancellationToken) =>
+        GetDistinctValuesAsync(
+            dbContext.Requests.Select(request => request.OrganizationName),
+            query,
+            cancellationToken);
+
+    public Task<IReadOnlyList<string>> GetAssigneesAsync(LookupQuery query, CancellationToken cancellationToken) =>
+        GetDistinctValuesAsync(
+            dbContext.Requests
+                .Where(request => request.AssignedTo != null)
+                .Select(request => request.AssignedTo!),
+            query,
+            cancellationToken);
+
+    private async Task<IReadOnlyList<string>> GetDistinctValuesAsync(
+        IQueryable<string> values,
+        LookupQuery query,
+        CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var search = query.Search.Trim();
+            values = values.Where(value => value.StartsWith(search));
+        }
+
+        return await values
+            .Distinct()
+            .OrderBy(value => value)
+            .Take(query.Limit ?? lookupOptions.Value.DefaultLimit)
+            .ToListAsync(cancellationToken);
     }
 }

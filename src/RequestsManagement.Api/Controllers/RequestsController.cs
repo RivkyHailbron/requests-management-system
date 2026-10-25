@@ -59,6 +59,22 @@ public sealed class RequestsController(
         return history is null ? NotFound() : Ok(history);
     }
 
+    [HttpGet("lookups/organizations")]
+    [ProducesResponseType<IReadOnlyList<string>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<IReadOnlyList<string>>> GetOrganizationNamesAsync(
+        [FromQuery] LookupQuery query,
+        CancellationToken cancellationToken) =>
+        Ok(await queryService.GetOrganizationNamesAsync(query, cancellationToken));
+
+    [HttpGet("lookups/assignees")]
+    [ProducesResponseType<IReadOnlyList<string>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<IReadOnlyList<string>>> GetAssigneesAsync(
+        [FromQuery] LookupQuery query,
+        CancellationToken cancellationToken) =>
+        Ok(await queryService.GetAssigneesAsync(query, cancellationToken));
+
     [HttpPatch("{id:int}/status")]
     [Consumes("application/json")]
     [ProducesResponseType<RequestDto>(StatusCodes.Status200OK)]

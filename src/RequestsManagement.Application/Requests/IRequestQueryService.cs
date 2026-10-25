@@ -13,4 +13,8 @@ public interface IRequestQueryService
     Task<RequestsSummaryDto> GetSummaryAsync(CancellationToken cancellationToken);
 
     Task<IReadOnlyList<RequestStatusHistoryDto>?> GetHistoryAsync(int requestId, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<string>> GetOrganizationNamesAsync(LookupQuery query, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<string>> GetAssigneesAsync(LookupQuery query, CancellationToken cancellationToken);
 }

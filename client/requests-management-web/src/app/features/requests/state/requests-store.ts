@@ -1,4 +1,4 @@
-import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, Signal, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
   BehaviorSubject,
@@ -37,6 +37,11 @@ interface ListState {
   readonly error: string | null;
 }
 
+interface Lookup {
+  readonly options: Signal<readonly string[]>;
+  readonly search: (term: string) => void;
+}
+
 interface SummaryState {
   readonly summary: RequestsSummary | null;
   readonly error: string | null;
@@ -61,6 +66,8 @@ export class RequestsStore {
 
   private readonly listState = signal<ListState>({ page: null, loading: true, error: null });
   private readonly summaryState = signal<SummaryState>({ summary: null, error: null });
+  private readonly organizationLookup = this.createLookup((search) => this.api.getOrganizationNames(search));
+  private readonly assigneeLookup = this.createLookup((search) => this.api.getAssignees(search));
 
   readonly query = toSignal(this.querySubject, { requireSync: true });
   readonly page = computed(() => this.listState().page);
@@ -69,6 +76,8 @@ export class RequestsStore {
   readonly isEmpty = computed(() => !this.loading() && !this.error() && this.page()?.totalCount === 0);
   readonly summary = computed(() => this.summaryState().summary);
   readonly summaryError = computed(() => this.summaryState().error);
+  readonly organizationOptions = this.organizationLookup.options;
+  readonly assigneeOptions = this.assigneeLookup.options;
   readonly transitions = toSignal(
     this.api.getStatusTransitions().pipe(catchError(() => of(null))),
     { initialValue: null as StatusTransitions | null },
@@ -115,6 +124,14 @@ export class RequestsStore {
     this.filtersSubject.next(filters);
   }
 
+  searchOrganizations(term: string): void {
+    this.organizationLookup.search(term);
+  }
+
+  searchAssignees(term: string): void {
+    this.assigneeLookup.search(term);
+  }
+
   changePage(page: number, pageSize: number): void {
     this.updateQuery({ page, pageSize });
   }
@@ -142,6 +159,21 @@ export class RequestsStore {
 
   history(requestId: number): Observable<readonly StatusHistoryEntry[]> {
     return this.api.getHistory(requestId);
+  }
+
+  private createLookup(load: (search: string) => Observable<readonly string[]>): Lookup {
+    const terms = new Subject<string>();
+    const options = toSignal(
+      terms.pipe(
+        debounceTime(this.config.searchDebounceMs),
+        map((term) => term.trim()),
+        distinctUntilChanged(),
+        switchMap((term) => load(term).pipe(catchError(() => of<readonly string[]>([])))),
+      ),
+      { initialValue: [] },
+    );
+
+    return { options, search: (term) => terms.next(term) };
   }
 
   private updateQuery(changes: Partial<RequestQuery>): void {

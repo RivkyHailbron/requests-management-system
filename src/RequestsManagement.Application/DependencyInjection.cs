@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using RequestsManagement.Application.Common;
 using RequestsManagement.Application.Requests;
 using RequestsManagement.Application.Requests.Commands;
+using RequestsManagement.Application.Requests.Queries;
 
 namespace RequestsManagement.Application;
 
@@ -21,6 +22,12 @@ public static class DependencyInjection
         services
             .AddOptions<BulkUpdateOptions>()
             .BindConfiguration(BulkUpdateOptions.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services
+            .AddOptions<LookupOptions>()
+            .BindConfiguration(LookupOptions.SectionName)
             .ValidateDataAnnotations()
             .ValidateOnStart();
 

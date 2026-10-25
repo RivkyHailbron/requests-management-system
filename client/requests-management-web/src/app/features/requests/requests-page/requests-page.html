@@ -6,7 +6,13 @@
   }
 
   <mat-card appearance="outlined" class="page__card">
-    <app-requests-filters (filtersChange)="store.changeFilters($event)" />
+    <app-requests-filters
+      [organizationOptions]="store.organizationOptions()"
+      [assigneeOptions]="store.assigneeOptions()"
+      (filtersChange)="store.changeFilters($event)"
+      (organizationSearch)="store.searchOrganizations($event)"
+      (assigneeSearch)="store.searchAssignees($event)"
+    />
 
     @if (selected().length > 0) {
       <app-bulk-status-bar

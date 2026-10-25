@@ -33,6 +33,14 @@ internal sealed class CachedRequestQueryService(
         CancellationToken cancellationToken) =>
         inner.GetHistoryAsync(requestId, cancellationToken);
 
+    public Task<IReadOnlyList<string>> GetOrganizationNamesAsync(
+        LookupQuery query,
+        CancellationToken cancellationToken) =>
+        inner.GetOrganizationNamesAsync(query, cancellationToken);
+
+    public Task<IReadOnlyList<string>> GetAssigneesAsync(LookupQuery query, CancellationToken cancellationToken) =>
+        inner.GetAssigneesAsync(query, cancellationToken);
+
     public async Task<RequestsSummaryDto> GetSummaryAsync(CancellationToken cancellationToken) =>
         await cache.GetOrCreateAsync(
             RequestCacheKeys.Summary,

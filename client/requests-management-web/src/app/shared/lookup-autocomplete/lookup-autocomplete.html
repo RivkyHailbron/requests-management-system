@@ -1,0 +1,23 @@
+<mat-form-field appearance="outline" subscriptSizing="dynamic">
+  <mat-label>{{ label() }}</mat-label>
+  <input
+    matInput
+    [formControl]="text"
+    [matAutocomplete]="autocomplete"
+    (focus)="loadOptions()"
+    (blur)="onTouched()"
+    autocomplete="off"
+  />
+  @if (hasText()) {
+    <button matIconSuffix mat-icon-button type="button" [attr.aria-label]="'Clear ' + label()" (click)="clear()">
+      <mat-icon>close</mat-icon>
+    </button>
+  }
+  <mat-autocomplete #autocomplete="matAutocomplete" requireSelection (optionSelected)="select($event.option.value)">
+    @for (option of options(); track option) {
+      <mat-option [value]="option">{{ option }}</mat-option>
+    } @empty {
+      <mat-option disabled>No matching values</mat-option>
+    }
+  </mat-autocomplete>
+</mat-form-field>
