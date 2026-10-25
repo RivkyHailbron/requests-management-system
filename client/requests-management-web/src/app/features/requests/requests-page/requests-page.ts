@@ -82,7 +82,7 @@ export class RequestsPage {
   }
 
   protected openHistoryDialog(request: RequestItem): void {
-    this.dialog.open(RequestHistoryDialog, { data: request, injector: this.injector, width: '480px' });
+    this.dialog.open(RequestHistoryDialog, { data: request, injector: this.injector, width: '560px' });
   }
 
   protected applyBulkStatus(status: RequestStatus): void {

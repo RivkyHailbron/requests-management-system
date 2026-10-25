@@ -1,6 +1,38 @@
-<h2 mat-dialog-title>Status history · #{{ request.id }}</h2>
+<div mat-dialog-title class="header">
+  <span class="header__overline">Request #{{ request.id }}</span>
+  <span class="header__title">{{ request.title }}</span>
+</div>
 
 <mat-dialog-content>
+  <dl class="details">
+    <div class="details__item details__item--wide">
+      <dt><mat-icon>business</mat-icon> Organization</dt>
+      <dd>{{ request.organizationName }}</dd>
+    </div>
+    <div class="details__item">
+      <dt><mat-icon>flag</mat-icon> Status</dt>
+      <dd><span class="app-badge" [attr.data-status]="request.status">{{ request.status | statusLabel }}</span></dd>
+    </div>
+    <div class="details__item">
+      <dt><mat-icon>priority_high</mat-icon> Priority</dt>
+      <dd><span class="app-badge" [attr.data-priority]="request.priority">{{ request.priority }}</span></dd>
+    </div>
+    <div class="details__item">
+      <dt><mat-icon>person</mat-icon> Assigned to</dt>
+      <dd [class.details__empty]="!request.assignedTo">{{ request.assignedTo ?? 'Unassigned' }}</dd>
+    </div>
+    <div class="details__item">
+      <dt><mat-icon>event</mat-icon> Created</dt>
+      <dd>{{ request.createdAt | date: 'medium' }}</dd>
+    </div>
+    <div class="details__item">
+      <dt><mat-icon>update</mat-icon> Last updated</dt>
+      <dd>{{ request.updatedAt | date: 'medium' }}</dd>
+    </div>
+  </dl>
+
+  <h3 class="section-title"><mat-icon>history</mat-icon> Status history</h3>
+
   @let current = state();
   @switch (current.kind) {
     @case ('loading') {
@@ -15,13 +47,19 @@
       } @else {
         <ol class="timeline">
           @for (entry of current.entries; track entry.id) {
-            <li>
-              <span class="timeline__change">
-                <span class="app-badge" [attr.data-status]="entry.previousStatus">{{ entry.previousStatus | statusLabel }}</span>
-                →
-                <span class="app-badge" [attr.data-status]="entry.newStatus">{{ entry.newStatus | statusLabel }}</span>
-              </span>
-              <span class="timeline__meta">{{ entry.changedAt | date: 'medium' }} · {{ entry.changedBy }}</span>
+            <li class="timeline__entry" [attr.data-status]="entry.newStatus">
+              <span class="timeline__dot"></span>
+              <div class="timeline__body">
+                <span class="timeline__change">
+                  <span class="app-badge" [attr.data-status]="entry.previousStatus">{{ entry.previousStatus | statusLabel }}</span>
+                  <mat-icon class="timeline__arrow">arrow_forward</mat-icon>
+                  <span class="app-badge" [attr.data-status]="entry.newStatus">{{ entry.newStatus | statusLabel }}</span>
+                </span>
+                <span class="timeline__meta">
+                  <span><mat-icon>person</mat-icon>{{ entry.changedBy }}</span>
+                  <span><mat-icon>schedule</mat-icon>{{ entry.changedAt | date: 'medium' }}</span>
+                </span>
+              </div>
             </li>
           }
         </ol>
@@ -31,5 +69,5 @@
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
-  <button mat-button type="button" mat-dialog-close>Close</button>
+  <button mat-flat-button type="button" mat-dialog-close>Close</button>
 </mat-dialog-actions>

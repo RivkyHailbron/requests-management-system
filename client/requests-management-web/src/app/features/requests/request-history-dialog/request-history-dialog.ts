@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { catchError, map, of, startWith } from 'rxjs';
 import { toErrorMessage } from '../../../core/http/problem-details';
@@ -17,7 +18,7 @@ type HistoryState =
 
 @Component({
   selector: 'app-request-history-dialog',
-  imports: [DatePipe, MatButtonModule, MatDialogModule, StateMessage, StatusLabelPipe],
+  imports: [DatePipe, MatButtonModule, MatDialogModule, MatIconModule, StateMessage, StatusLabelPipe],
   templateUrl: './request-history-dialog.html',
   styleUrl: './request-history-dialog.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
